@@ -1,0 +1,39 @@
+---
+title: Images and CORS
+description: Drawing an image inside an item, and why the image's host matters.
+sidebar:
+  order: 5
+---
+
+import Demo from "../../../components/Demo.astro";
+import Images from "../../../demos/images.tsx";
+import ImagesSource from "../../../demos/images.tsx?raw";
+
+An item can carry an image: `texture: { url, fit? }`. Once the item is at least
+`textures.minDiameterPx` across on screen (48 by default), the image is loaded and drawn inside its
+`disc` or `square`, cropped to the shape: `cover` (the default) fills it, `contain` fits the whole
+image. Until it loads, below that size, and if it fails, the plain shape shows. A `cloud` ignores
+`texture`.
+
+## CORS
+
+The image is drawn into a WebGL canvas, and a browser lets a canvas use only pixels the page may
+read. Serve it from **the same origin**, as a **`data:` URL**, or from a host that sends
+**`Access-Control-Allow-Origin`**: the explorer requests it with `crossOrigin = "anonymous"`.
+Anything else fails, the item keeps its shape, and `onTextureError` fires once for that URL. The
+same image in your own DOM (an `<img>` in a detail panel) has no such limit.
+
+The demo's faces are `data:` URLs. Its square uses `https://github.com/SirKettle.png`, which
+redirects to an avatar without a CORS header on the redirect: the log shows the canvas refusing it,
+and the same URL working in an `<img>`. Background images follow the same rule.
+
+<Demo code={ImagesSource} file="images.tsx">
+  <Images client:only="react" />
+</Demo>
+
+## Memory
+
+Each image is cropped once into a 256 px square (256 KB of GPU memory). At most `textures.budget`
+(128 by default, so 32 MB) are held or loading at once; the least recently drawn go first. Images
+drawn in the current frame are never evicted, so a view needing more than the budget draws the rest
+as plain shapes instead of reloading them every frame.

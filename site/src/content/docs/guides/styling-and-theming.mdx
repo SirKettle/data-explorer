@@ -1,0 +1,48 @@
+---
+title: Styling and theming
+description: Palettes, colour ramps, sizing and the classes you can style.
+sidebar:
+  order: 1
+---
+
+import Demo from "../../../components/Demo.astro";
+import Theming from "../../../demos/theming.tsx";
+import ThemingSource from "../../../demos/theming.tsx?raw";
+
+The explorer draws on a canvas, so its colours come from props rather than CSS. Its DOM (the
+wrapper, the canvas host and the outline) takes your stylesheet as usual.
+
+## Palette
+
+`palette` sets the canvas's own colours: `background`, `grid`, `label`, `labelStroke` (the outline
+behind label text), `hover`, `selection`, `ownership` (the `ring` emphasis) and `aggregate` (a
+hollow "N more" cluster). Each is a [colour](/data-explorer/guides/colours-and-backgrounds/): a
+`0xRRGGBB` number or a CSS string. Start from `FALLBACK_PALETTE` and override what you need. Pass a
+new object and the canvas re-tints in place, with no new scene.
+
+## Ramp
+
+An item with a `ramp` position from 0 to 1 is coloured along the **ramp**, a sweep of hue from
+`fromHue` to `toHue` at a fixed `saturation` and `lightness` (`DEFAULT_RAMP` by default). Use it for
+something ordered: age, size, a score the viewer can read elsewhere. An item without one gets a
+stable colour of its own, so a missing value never looks like an average one. The ramp is read
+once, when the explorer mounts; the demo remounts it with a `key` to switch.
+
+<Demo code={ThemingSource} file="theming.tsx">
+  <Theming client:only="react" />
+</Demo>
+
+## Sizing and CSS
+
+The explorer needs no stylesheet. It sets inline only what it cannot work without: the canvas fills
+its container's width and owns its touch gestures, and the outline is visually hidden but read
+aloud. If nothing gives the canvas a height, it takes 480 px. To style it, target:
+
+| Class | What it is |
+| --- | --- |
+| `.data-explorer` | The view's wrapper. |
+| `.data-explorer__surface` | The canvas host. Give it (or its container) a height; borders, background and cursor are yours. |
+| `.visually-hidden` | The outline, already hidden inline. |
+
+Your rules win, because the inline styles set only what the explorer needs, at the values a styled
+page would use anyway. This site sizes every demo with one rule on `.data-explorer__surface`.

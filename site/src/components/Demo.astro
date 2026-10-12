@@ -1,0 +1,23 @@
+---
+// A live demo above the very file that runs it. The page passes the component (as the slot, with
+// a client directive) and the same file imported `?raw` as `code`, so the two cannot drift.
+// `scripts/check-docs.ts` fails the build if a page shows TypeScript any other way.
+import { Code } from "@astrojs/starlight/components";
+
+interface Props {
+  /** The demo file, imported with `?raw`. */
+  code: string;
+  /** Its path under `site/src/demos/`, shown as the code's title. */
+  file: string;
+  /** Height of the canvas in pixels (shorter on a phone). */
+  height?: number;
+}
+const { code, file, height = 420 } = Astro.props;
+const lang = file.endsWith(".ts") ? "ts" : "tsx";
+---
+
+<figure class="demo not-content" data-demo-file={file}>
+  <div class="demo__live" style={`--demo-height: ${height}px`}><slot /></div>
+  <figcaption>Running the code below: <code>{file}</code></figcaption>
+</figure>
+<Code code={code.trimEnd()} lang={lang} title={file} />

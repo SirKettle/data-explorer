@@ -28,11 +28,11 @@ type Path = string;
 const FILE_BUDGET = 120;
 const OLDEST_DAYS = 400;
 
-export const folderHref = (path: Path) => `/file-tree#${encodeURIComponent(path)}`;
+export const folderHref = (path: Path) => `#${encodeURIComponent(path)}`;
 // The example has no file pages, so a file links to its folder with the file named: still a
 // real, stable URL that `decode` understands.
 export const fileHref = (file: FileEntry) =>
-  `/file-tree#${encodeURIComponent(`${parentPath(file.path)}?file=${file.name}`)}`;
+  `#${encodeURIComponent(`${parentPath(file.path)}?file=${file.name}`)}`;
 
 function kilobytes(bytes: number) {
   return `${(bytes / 1024).toFixed(1)} KB`;

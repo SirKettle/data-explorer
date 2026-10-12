@@ -535,6 +535,4 @@ export function windowed<T>(items: readonly T[], limit: number): {
     truncated: ExplorerTruncation | null;
 };
 
-// (No @packageDocumentation comment for this package)
-
 ```

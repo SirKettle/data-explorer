@@ -1,8 +1,9 @@
 # Examples
 
 Five small apps built on `@thirkettle/data-explorer`, each with made-up data and nothing else
-underneath, plus a stress page for measuring. Each shows a different part of the contract; the
-package README's Examples section maps every option to the app that uses it.
+underneath, plus a stress page for measuring. Each shows a different part of the contract. The
+[documentation site](https://sirkettle.github.io/data-explorer/examples/) runs each one beside its
+source.
 
 ```sh
 bun run examples   # then open http://localhost:3070
@@ -16,7 +17,7 @@ step. If a page still shows old code after an edit, restart the server.
 | [A file tree](./file-tree/)                  | `/file-tree`    | The minimum: a tree of packed scenes, a string focus, and an always-`anchored` `parentOf`. Also `windowed` with an honest aggregate (`assets/icons` has 420 files and draws 120), `ramp` (file age), and `emphasis: ["ring"]` (uncommitted changes).                                          |
 | [A module dependency graph](./module-graph/) | `/module-graph` | A graph reached through a tree. The focus is a tagged union, and a module's scene is **radial** (`focusId`), with what it imports as discs and what imports it as squares. Every neighbour drills into its own neighbourhood, so you can walk round the import cycles.                        |
 | [A streaming atlas](./atlas/)                | `/atlas`        | The optional members: `loadSceneStreaming` with `expectedItemCount` (countries arrive in pages), `subscribeToInvalidation` + `refreshScene` (mark a country visited and its ring appears in place), a custom `ramp` (population density), and a live `palette` switch between light and dark. |
-| [A solar system](./solar-system/)            | `/solar-system` | Item `texture`s cropped to their disc, a `texture` from a host with no CORS header (the fallback and `onTextureError`), custom renderers by item `kind`, `edges` as orbits, a `pulse`, and an image `background`. |
+| [A solar system](./solar-system/)            | `/solar-system` | Item `texture`s cropped to their disc, a `texture` from a host with no CORS header (`github.com/<user>.png`: the fallback and `onTextureError`), custom renderers by item `kind`, `edges` as orbits, a `pulse`, and an image `background`. |
 | [An org chart](./org-chart/)                 | `/org-chart`    | A tree (departments, teams, people) into a radial person view whose manager and reports are drawn edges you can walk. Written from the docs alone, as US072's cold-start test, with a headless `smoke.test.ts`. |
 | [Stress test](./stress/)                     | `/stress`       | One big scene, its size and styles in the query string, for reading draw cost off `?stats=1`. |
 
@@ -24,7 +25,7 @@ step. If a page still shows old code after an edit, restart the server.
 
 ```text
 examples/
-  server.ts              one route per page
+  server.ts              one route per page (the docs site builds the same pages statically)
   index.html             the gallery
   shared/
     ExampleShell.tsx     page chrome: focus in the URL hash, breadcrumb, selection panel
@@ -51,6 +52,9 @@ Start with `source.ts` in each folder. `ExampleShell.tsx` is the wiring every co
   focus. With `edges={{ visible: true }}` the canvas also draws them (module graph, solar
   system, org chart).
 - `bun run typecheck` in this package checks the examples too.
-- **Adding an example:** a folder with `index.html`, `main.tsx` and usually `source.ts`, plus two
-  lines in `server.ts` (`import page from "./<name>/index.html"` and a `"/<name>": page` route)
-  and an entry in the gallery, `index.html`.
+- **Assets** (SVGs) are imported (`import url from "./stars.svg"`), so the bundler gives them URLs
+  that work both here and under the docs site's sub-path. A canvas may draw them because they are
+  same-origin.
+- **Adding an example:** a folder with `index.html`, `main.tsx` and usually `source.ts`; routes in
+  `server.ts` (`import page from "./<name>/index.html"`, and `"/<name>"` and `"/<name>/"` routes);
+  an entry in the gallery, `index.html`; and a page in `site/src/content/docs/examples/`.

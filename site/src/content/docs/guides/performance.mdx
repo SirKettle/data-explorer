@@ -1,0 +1,42 @@
+---
+title: Performance
+description: What the explorer costs to draw, the budgets that keep it smooth, and the stats overlay.
+sidebar:
+  order: 8
+---
+
+import Demo from "../../../components/Demo.astro";
+import Performance from "../../../demos/performance.tsx";
+import PerformanceSource from "../../../demos/performance.tsx?raw";
+
+`stats` shows an overlay of draw time, frame rate and pool sizes. Turn it on while you tune, and
+watch the `draws` count: it stops climbing whenever nothing is moving, because **at rest nothing is
+drawn**. Only a pulse, an `animated` renderer or a transition on screen asks for frames.
+
+<Demo code={PerformanceSource} file="performance.tsx">
+  <Performance client:only="react" />
+</Demo>
+
+Measured on desktop Chrome (Apple silicon), canvas 1102 × 631 at a device pixel ratio of 2: the
+rolling average draw time over 300 small zoom steps.
+
+| Scene | Fit to view | Zoomed in about 6× |
+| --- | --- | --- |
+| 1,000 plain items | 1.65 ms | 1.41 ms |
+| 1,000 items with 500 edges, a texture each and custom renderers | 3.39 ms | 2.71 ms |
+
+| Edges (1,000 items) | Draw time |
+| --- | --- |
+| 500 straight | 2.3 ms |
+| 2,000 straight | 2.9 ms |
+| 2,000 curved | 5.4 ms |
+| 2,000 dashed | 18.0 ms |
+| 1,000 curved, dashed, with arrows | 11.2 ms |
+
+The defaults come from these measurements: at most **500 edges**, **200 custom views** and **128
+textures** (32 MB) at once. They were measured on a desktop, and a phone is several times slower,
+so check yours before raising them. Dashes are the expensive edge style, because each dash is its
+own geometry.
+
+The package itself adds about 23 KB (gzipped) to the page that uses it, and 11 KB more when the
+first explorer mounts, besides PixiJS and React.

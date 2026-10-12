@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { createSceneSource, type ExplorerEdge, type ExplorerNode, type ExplorerScene } from "@thirkettle/data-explorer";
 import { ExampleShell } from "../shared/ExampleShell";
+import { FACE_URLS } from "../solar-system/textures";
 
 /**
  * US071 — a measuring page, not a showcase: one packed scene of `nodes` items joined by `edges`
@@ -46,7 +47,7 @@ function buildScene(): ExplorerScene<null> {
     drillsInto: null,
     shape: "disc",
     kind: CUSTOM ? "dot" : null,
-    texture: TEXTURES ? { url: `/solar-system/textures/${FACES[i % FACES.length]}.svg?item=${i}` } : null,
+    texture: TEXTURES ? { url: `${FACE_URLS[FACES[i % FACES.length]!]}?item=${i}` } : null,
   }));
   const edges: ExplorerEdge[] = Array.from({ length: EDGES }, (_, i) => {
     const a = Math.floor(next() * NODES);

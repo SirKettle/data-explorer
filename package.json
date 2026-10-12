@@ -54,7 +54,7 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p examples",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p examples && tsc --noEmit -p site/src/demos",
     "api:report": "tsc -p tsconfig.api.json && api-extractor run --local -c api-extractor.index.json && api-extractor run --local -c api-extractor.headless.json && api-extractor run --local -c api-extractor.pixi.json",
     "lint:package": "publint && attw --pack . --profile esm-only",
     "check:bundle": "bun run examples/check-bundle.ts",

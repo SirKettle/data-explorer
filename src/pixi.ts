@@ -6,6 +6,9 @@
  * after the page. Build your views with `pixi.js` (v8) yourself; this entry adds only the
  * contract's types and an identity helper that checks a module against it. The package's main
  * and `./headless` entries never reach this one (asserted by `architecture.test.ts`).
+ *
+ * @packageDocumentation
+ * @module pixi
  */
 import type { Container, Texture } from "pixi.js";
 import type { RenderNode } from "./camera/scene-stack";

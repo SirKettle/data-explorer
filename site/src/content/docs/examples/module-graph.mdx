@@ -1,0 +1,19 @@
+---
+title: A module graph
+description: The a module graph example, running, with its source.
+sidebar:
+  order: 2
+---
+
+import ExampleFrame from "../../../components/ExampleFrame.astro";
+import f_source_ts from "../../../../../examples/module-graph/source.ts?raw";
+import f_main_tsx from "../../../../../examples/module-graph/main.tsx?raw";
+import f_data_ts from "../../../../../examples/module-graph/data.ts?raw";
+
+A graph reached through a tree. The focus is a tagged union, and a module's scene is **radial** (`focusId`): what it imports as discs, what imports it as squares, the edges drawn. Every neighbour drills into its own neighbourhood, so you can walk round the import cycles. It logs every event, and has a toggle that turns activation into "open details".
+
+The frame below runs the example built from exactly these files. Start with `source.ts`. Every
+example shares one small page shell (`examples/shared/ExampleShell.tsx`): it keeps the focus in the
+URL hash, builds a breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
+
+<ExampleFrame name="module-graph" files={{ "source.ts": f_source_ts, "main.tsx": f_main_tsx, "data.ts": f_data_ts }} />

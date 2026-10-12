@@ -4,6 +4,7 @@ import { FALLBACK_PALETTE, type ExplorerBackground, type ExplorerEffects, type E
 import { ExampleShell } from "../shared/ExampleShell";
 import { visitedStore, type VisitedStore } from "./data";
 import { atlasSource, decodeContinent, DENSITY_RAMP } from "./source";
+import contoursUrl from "./contours.svg";
 
 const LIGHT_PALETTE: ExplorerPalette = {
   background: 0xf7f8fb,
@@ -27,8 +28,8 @@ const BACKDROPS: { name: string; dark: ExplorerBackground; light: ExplorerBackgr
   },
   {
     name: "image",
-    dark: { color: "#06070c", image: { url: "/atlas/contours.svg", alpha: 0.5 } },
-    light: { color: "#fbfaf6", image: { url: "/atlas/contours.svg", alpha: 0.25 } },
+    dark: { color: "#06070c", image: { url: contoursUrl, alpha: 0.5 } },
+    light: { color: "#fbfaf6", image: { url: contoursUrl, alpha: 0.25 } },
   },
 ];
 

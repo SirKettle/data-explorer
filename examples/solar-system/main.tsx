@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { ExampleShell } from "../shared/ExampleShell";
 import { bodyById } from "./data";
 import { decodePlanet, solarSystemSource } from "./source";
+import starsUrl from "./stars.svg";
 
 const source = solarSystemSource();
 
@@ -27,7 +28,7 @@ function SolarSystem() {
       encode={(planet) => planet}
       decode={decodePlanet}
       trailOf={(planet) => (planet === null ? ["The Solar System"] : ["The Solar System", bodyById.get(planet)!.name])}
-      background={{ color: "#03040a", image: { url: "/solar-system/stars.svg", fit: "tile", alpha: 0.8 }, grid: false }}
+      background={{ color: "#03040a", image: { url: starsUrl, fit: "tile", alpha: 0.8 }, grid: false }}
       edges={{ visible: true, style: { dash: [2, 6], alpha: 0.35, width: 1 } }}
       textures={{ minDiameterPx: 32 }}
       renderers={() => import("./planet-renderers")}

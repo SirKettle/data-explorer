@@ -1,0 +1,32 @@
+---
+title: Testing
+description: Driving the explorer's navigation in a test, with no canvas, no animation and no DOM.
+sidebar:
+  order: 10
+---
+
+import { Code } from "@astrojs/starlight/components";
+import testing from "../../../demos/testing.test.ts?raw";
+
+`@thirkettle/data-explorer/headless` drives the explorer without a canvas. Nothing in it imports
+PixiJS, and it needs no DOM, so it runs in `bun test`, Vitest or Node's test runner.
+
+**`createTestStack(source, options?)`** loads the first scene and returns a stack that navigates
+the way the explorer does, with every move un-animated. This file is not an illustration: it runs
+in this repository's CI on every change.
+
+<Code code={testing.trimEnd()} lang="ts" title="testing.test.ts" />
+
+| Member | Does |
+| --- | --- |
+| `current` | The scene the viewer is in: `focus`, `heading`, the `scene` your source returned, and `renderNodes` (each item as laid out, with `x`, `y` and `size`). |
+| `depth` | How many scenes deep the viewer is from where they started. |
+| `enter(itemId)` | Enters that item. A non-drillable item, or a failed load, leaves the stack where it was. |
+| `zoomOut()` | Leaves the way it came in; at the starting scene, follows your `parentOf`. |
+| `enterSibling(itemId)`, `jumpTo(focus)` | Moves sideways, or jumps as a deep link would. |
+| `breadcrumb()` | The headings from the start to here. |
+| `stack`, `rig` | The underlying scene stack and camera, for anything else. |
+
+`./headless` also exports `resolveOptions` (every option with its default), `parseColour`,
+`appearanceFor` (the colour and shape the canvas picks for an item) and the stack and camera the
+test stack is built from.

@@ -1,20 +1,24 @@
 import { createSceneSource, type ExplorerEdge, type ExplorerNode, type ExplorerScene, type SceneSource } from "@thirkettle/data-explorer";
 import { bodyById, PLANETS, SUN, type Body } from "./data";
+import { FACE_URLS } from "./textures";
 
 /**
  * A star system as radial scenes: the Sun at the centre with its planets round it, each planet a
  * scene of its own with its moons. Every body is drawn with a same-origin texture (US071), except
- * Pluto, whose face lives on an origin the canvas may not read.
+ * Pluto, whose face is on an origin the canvas may not read.
  */
 type PlanetId = string;
 
-/** Where a body's face is: `textures/` on this origin, or the no-CORS origin on the next port. */
+/**
+ * Pluto's face: an image on another origin that sends no CORS header. `github.com/<user>.png`
+ * redirects to the avatar without one, so a page can show it in an `<img>` but a canvas may not
+ * draw it. Pluto keeps its plain disc, and `onTextureError` reports the URL once.
+ */
+export const NO_CORS_FACE = "https://github.com/SirKettle.png";
+
+/** Where a body's face is: one of `textures/` (same origin), or the no-CORS image. */
 export function faceUrl(face: string): string {
-  if (face.startsWith("no-cors:")) {
-    const port = Number(window.location.port || 80) + 1;
-    return `${window.location.protocol}//${window.location.hostname}:${port}/${face.slice("no-cors:".length)}.svg`;
-  }
-  return `/solar-system/textures/${face}.svg`;
+  return face === "no-cors" ? NO_CORS_FACE : (FACE_URLS[face] ?? FACE_URLS.moon!);
 }
 
 function bodyNode(body: Body, drillable: boolean): ExplorerNode<PlanetId> {

@@ -1,0 +1,118 @@
+---
+title: Concepts
+description: Focus, scenes, packed and radial layouts, drilling and zooming out, loading, and the accessible outline.
+sidebar:
+  order: 2
+---
+
+import Demo from "../../components/Demo.astro";
+import ConceptsGraph from "../../demos/concepts-graph.tsx";
+import conceptsGraph from "../../demos/concepts-graph.tsx?raw";
+
+Six ideas, in the order you meet them. The demo at the end uses all of them.
+
+## Focus: where the viewer is
+
+A **focus** is a value you choose that says where the viewer is in your data: a folder path, a
+database id, `{ team: "Design" }`, anything. `null` always means the top. The explorer never looks
+inside a focus; it only hands it back to you.
+
+Each focus has a **key**: a string that is equal for equal foci, used to cache and compare scenes.
+`createSceneSource` makes one for you (`"root"` for `null`, the value itself for a string,
+`JSON.stringify` for an object); give it `keyOf` only if your objects' key order can vary.
+
+## Scene: what is drawn at a focus
+
+A **scene** is everything drawn at one focus: a `heading`, the items, and any edges between them.
+Your scene source builds it; the explorer lays it out and draws it. Items come in two lists:
+
+- **`clusters`**: groups, usually drawn as soft clouds you can enter. A cluster's `href` may be
+  `null`, but only for an "Other (N more)" aggregate, which also sets `truncated` (`windowed()`
+  makes both for you). An aggregate is drawn hollow and cannot be entered.
+- **`nodes`**: single things, drawn as discs or squares. A node always has an `href`.
+
+Every item has an `id` (unique in its scene), a `label`, a `weight`, an `href`, a `shape`
+(`"cloud"`, `"disc"` or `"square"`) and `drillsInto`. It may have `marks` (short badges, read in
+the outline) and `data` (your own, handed back by the events).
+
+**`weight` sets size, within its own list.** Nodes are sized against the other nodes in the scene,
+and clusters against the other clusters; every cluster is drawn at least twice the size of the
+largest node, so groups read as groups. Size grows more gently than weight (weight to the power
+0.7), and the top tenth of weights is clamped, so one outlier cannot shrink everything else. Use a
+real count the viewer could read (files, members, bytes), not a made-up score.
+
+## Drilling in, zooming out
+
+**`drillsInto`** is the focus an item opens, or `null` if there is nothing inside it. Zooming far
+enough into such an item, or double-clicking it, enters it: the explorer loads the scene for that
+focus and draws it inside the item, so the viewer never loses their place.
+
+Zooming **out** asks your source's `parentOf(focus)` where to go:
+
+| Answer | Means |
+| --- | --- |
+| `{ kind: "anchored", focus, anchorId }` | The parent scene has an item, `anchorId`, standing for this one; the camera zooms out of it smoothly. The usual answer for a tree. |
+| `{ kind: "unanchored", focus }` | There is a parent, but no single item in it stands for this scene; the explorer swaps to it directly. Use it for a node in a cycle, or with many parents. |
+| `{ kind: "none" }` | Nothing above. Also what you get without `parentOf`. |
+
+If the viewer *entered* the scene, zooming out goes back the way they came, whatever `parentOf`
+says. `parentOf` matters when they arrived another way, such as a deep link. The explorer keeps a
+stack of the scenes the viewer entered and never walks your data, so a graph with cycles costs only
+the scenes actually visited.
+
+## Packed and radial scenes
+
+A scene is laid out one of two ways:
+
+- **Packed**: clusters and nodes packed together, biggest first. How a level of a tree is shown.
+- **Radial**: one item in the middle with its neighbours round it. How one item's neighbourhood
+  in a graph is shown.
+
+A scene is radial when it sets **`focusId`** to the id of the item to put in the middle. In a
+radial scene:
+
+- the **neighbours** are the items joined to the centre by an edge, in either direction. An item
+  joined to the centre by no edge is **not drawn**;
+- neighbours are **grouped by the `kind`** of the edge that joins them, then ordered by id, and
+  placed evenly round the centre, starting at three o'clock and going clockwise;
+- the **centre** is drawn at a fixed size and is never entered (it is the scene you are in), so
+  its `drillsInto` is ignored; the neighbours are sized against each other;
+- an edge's **direction** only matters for drawing: arrowheads point from `sourceId` to
+  `targetId`. Edges between two neighbours are drawn (with edges on) but do not affect the layout.
+
+Edges in a packed scene do not affect the layout either, but can be
+[drawn](/data-explorer/guides/edges/). A neighbour can drill into its own radial scene, which is
+how a viewer walks a graph.
+
+## Loading, caching and change
+
+While the viewer zooms towards an item, the explorer loads its scene early and fades it in inside
+the item, so it needs to know what is already loaded. **`createSceneSource({ load, parentOf })`**
+handles that: it calls `load` once per focus and caches the result. A failed load is not cached, so
+it is retried. Its extras:
+
+- `loadStreaming(focus, onUpdate)`: resolve with a first part quickly, then call `onUpdate` with
+  fuller scenes as more arrives. Set the scene's `expectedItemCount` and the layout reserves room
+  for everything from the start.
+- `source.invalidate(focus?)`: when your data changes, call it for one focus or all, and any
+  explorer showing the source reloads its scene in place.
+
+If your data already lives in a cache of its own (a query library, say), implement the
+[`SceneSource`](/data-explorer/reference/main/interfaces/scenesource/) interface directly instead.
+
+## The accessible outline
+
+The canvas is hidden from assistive technology. Beside it, the explorer renders an **outline**: the
+current scene as real links (each item's `href`) and buttons, visually hidden but read aloud and
+reachable by keyboard. Enter on an entry enters that item. That is why every node needs an `href`:
+anything the canvas shows must also be reachable as an ordinary link. If your data has no pages of
+its own, use stable in-app URLs. [Accessibility](/data-explorer/guides/accessibility/) shows it.
+
+## All of it together
+
+Teams are clusters at the top (packed). A team is a packed scene of its people. A person is a
+radial scene: their teammates and the people they work with, grouped by the edge's `kind`.
+
+<Demo code={conceptsGraph} file="concepts-graph.tsx">
+  <ConceptsGraph client:only="react" />
+</Demo>

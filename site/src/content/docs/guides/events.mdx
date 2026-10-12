@@ -1,0 +1,38 @@
+---
+title: Events
+description: Selection, hover, activation, navigation and the camera, with your own data handed back.
+sidebar:
+  order: 6
+---
+
+import Demo from "../../../components/Demo.astro";
+import Events from "../../../demos/events.tsx";
+import EventsSource from "../../../demos/events.tsx?raw";
+
+Every payload is plain data: your own items, headings, foci and numbers, never a PixiJS object. An
+item comes back exactly as your source wrote it, including its `data`, typed by the source's second
+type parameter (`createSceneSource<Focus, Data>`).
+
+<Demo code={EventsSource} file="events.tsx" height={360}>
+  <Events client:only="react" />
+</Demo>
+
+| Event | Fires | Payload |
+| --- | --- | --- |
+| `onSettle` | The camera came to rest on a scene, once per burst of motion. | the focus |
+| `onSceneChange` | Every scene swap, immediately, including a scene filling in as it streams. Good for a breadcrumb. | `{ heading, focus, scene }` |
+| `onNodeSelect` | A confirmed single click or tap on an item, or `null` on empty space. | the item, or `null` |
+| `onNodeHover` | The item under the mouse changes. Mouse only. | the item, or `null` |
+| `onNodeActivate` | A double-click or double-tap on an item, or Enter on its outline entry. | `{ item, source, preventDefault() }` |
+| `onLeave`, `onEnter` | The viewer left a scene, then arrived at one, by any route. | `{ heading, focus, scene, direction }` |
+| `onCameraChange` | The camera moved: at most once per drawn frame. | `{ x, y, scale }` |
+| `onBackgroundClick` | A confirmed single click or tap on empty space. | `{ screen, world }` |
+| `onTextureError` | An item image could not be drawn; once per URL. | `{ url }` |
+
+`direction` is `"in"` (entering an item), `"out"` (zooming out) or `"jump"` (a `focus` change
+from outside, such as Back). A scene filling in as it streams, or refreshing after `invalidate`, is
+not a navigation and fires neither.
+
+`onNodeActivate` is **cancellable**. By default the explorer enters the item if it can, and for a
+pointer otherwise zooms in at that point. Call `preventDefault()` to do something else, such as
+opening a panel: tick the box in the demo and double-click a planet.

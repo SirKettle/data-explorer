@@ -1,0 +1,56 @@
+---
+title: Getting started
+description: Install the package and draw your first explorer over a small tree.
+sidebar:
+  order: 1
+---
+
+import Demo from "../../components/Demo.astro";
+import FirstRender from "../../demos/first-render.tsx";
+import firstRender from "../../demos/first-render.tsx?raw";
+
+`@thirkettle/data-explorer` draws tree- and graph-shaped data as a space you zoom through. This page
+goes from install to a working explorer. [Concepts](/data-explorer/concepts/) explains the ideas
+behind it.
+
+## Install
+
+```sh
+npm install @thirkettle/data-explorer pixi.js react react-dom
+```
+
+`react` (18 or 19) and `pixi.js` (8.13.2 or later 8.x) are peer dependencies: your app provides
+them. PixiJS is loaded lazily, the first time an explorer mounts, so it stays out of your page's
+first load. The package is ESM only.
+
+## Your first explorer
+
+Everything below is one file. It describes a folder tree as a **scene source**: given a focus (a
+folder path, or `null` for the top), it returns what to draw there. Zoom into a folder to enter it;
+zoom out to leave.
+
+<Demo code={firstRender} file="first-render.tsx">
+  <FirstRender client:only="react" />
+</Demo>
+
+Three things in it are worth knowing now:
+
+- **Clusters and nodes.** Folders are `clusters`, drawn as soft clouds you can enter; files are
+  `nodes`, drawn as discs. `weight` sets each one's size against its neighbours.
+- **`drillsInto` and `parentOf`.** An item's `drillsInto` is the focus it opens. `parentOf` says
+  where zooming out of a focus leads: here, back to the folder's own cloud in its parent.
+- **`focus` and `onSettle`.** The explorer moves the camera itself as the viewer zooms.
+  `onSettle(focus)` tells you where they came to rest, once per burst of motion. Store it (in state,
+  or in your URL) and pass it back as `focus`; passing a different `focus` (Back, a deep link) makes
+  the explorer jump there.
+
+The explorer needs no stylesheet. Its canvas fills its container's width; if nothing gives it a
+height, it takes 480 px. Give its container, or `.data-explorer__surface`, a height to change that.
+
+## Next
+
+- [Concepts](/data-explorer/concepts/): focus, scenes, packed and radial layouts, drilling and
+  zooming out, loading, and the accessible outline.
+- [Events](/data-explorer/guides/events/): selection, hover, activation, and getting your own data
+  back.
+- [Styling and theming](/data-explorer/guides/styling-and-theming/): colours, ramps and sizing.

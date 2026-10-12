@@ -92,7 +92,8 @@ export function ExampleShell<F, D = unknown>({
   return (
     <main className="example">
       <header className="example__header">
-        <a href="/">← All examples</a>
+        {/* Hidden when the example is embedded (the docs site shows each one in a frame). */}
+        {window.self === window.top && <a href="../">← All examples</a>}
         <h1>{title}</h1>
         <div className="example__intro">{intro}</div>
       </header>

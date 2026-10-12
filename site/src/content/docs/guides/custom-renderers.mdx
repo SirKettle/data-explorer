@@ -1,0 +1,42 @@
+---
+title: Custom renderers
+description: Drawing an item yourself with PixiJS, loaded lazily by kind.
+sidebar:
+  order: 7
+---
+
+import Demo from "../../../components/Demo.astro";
+import CustomRenderers from "../../../demos/custom-renderers.tsx";
+import CustomRenderersSource from "../../../demos/custom-renderers.tsx?raw";
+import RenderersModuleSource from "../../../demos/custom-renderers.renderers.ts?raw";
+import { Code } from "@astrojs/starlight/components";
+
+When the built-in shapes are not enough, draw an item yourself with PixiJS 8. Give the item a
+`kind`, and hand the view a **module of renderers keyed by kind**, loaded lazily. Items whose kind
+has no renderer keep their `shape`.
+
+<Demo code={CustomRenderersSource} file="custom-renderers.tsx">
+  <CustomRenderers client:only="react" />
+</Demo>
+
+The module it loads, which is the only file that imports PixiJS:
+
+<Code code={RenderersModuleSource.trimEnd()} lang="ts" title="custom-renderers.renderers.ts" />
+
+- **The frame** gives `size` (world units: draw centred on 0, 0), `screenSize` (pixels, for level
+  of detail), `opacity`, `hovered`, `selected`, `timeMs`, `tint` (the colour the item would have
+  had), `texture` (the item's own image, once ready) and `reducedMotion`. The second argument is the
+  laid-out item; its `item` field is your item as you wrote it.
+- **The explorer still does** culling, transitions, hit-testing, the outline, rings, halos, glows
+  and labels. A custom view replaces only the shape.
+- **Pooling.** Views are pooled per kind and reused for whichever item comes next, so keep
+  per-item state in `update`, not `create`.
+- **Animation.** `animated: true` asks for frames while a view of that kind is on screen; under
+  `prefers-reduced-motion` none are asked for.
+- **Failures.** A kind with no renderer, or a renderer that throws, falls back to the shape and is
+  reported once; one that throws is switched off for the session. Throws are isolated; drawing
+  mistakes are not, so a broken polygon can still spoil the frame.
+- **Cap.** At most `customViews.max` items (200 by default) are drawn by renderers at once; past it,
+  those furthest from the middle of the view draw their shape.
+- **`@thirkettle/data-explorer/pixi`** holds only the contract's types and `defineRenderers`. Import
+  it only from your renderers module, so it and PixiJS stay out of your page's first load.
