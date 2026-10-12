@@ -1,0 +1,4 @@
+public/live/
+.astro/
+dist/
+src/content/docs/reference/

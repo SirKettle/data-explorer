@@ -1,0 +1,6 @@
+{
+  // Type-checks every demo against the package source, with the package's own `bun run typecheck`:
+  // an API change that breaks a docs demo breaks the build.
+  "extends": "../../../tsconfig.json",
+  "include": ["."]
+}

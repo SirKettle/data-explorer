@@ -1,0 +1,39 @@
+---
+title: Edges
+description: Drawing relationships between items, styled by kind.
+sidebar:
+  order: 3
+---
+
+import Demo from "../../../components/Demo.astro";
+import Edges from "../../../demos/edges.tsx";
+import EdgesSource from "../../../demos/edges.tsx?raw";
+
+A scene's `edges` always shape a radial scene's [layout](/data-explorer/concepts/#packed-and-radial-scenes).
+With `edges={{ visible: true }}` they are also **drawn**, in packed and radial scenes alike: under
+the items, fading with them through every transition, and culled off screen. An edge naming an item
+that is not in the scene is skipped.
+
+Each edge's style starts from `style` and is overridden by `styles[kind]`. In the demo, a module
+sits in the middle: solid arrows to what it imports, dashed curves from what imports it.
+Double-click a neighbour to walk the graph.
+
+<Demo code={EdgesSource} file="edges.tsx">
+  <Edges client:only="react" />
+</Demo>
+
+| Style | Default | Effect |
+| --- | --- | --- |
+| `color` | `palette.label` | Any colour. |
+| `width` | `1.5` | Screen pixels, whatever the zoom. |
+| `alpha` | `0.5` | Multiplied by the lower opacity of the edge's two items. |
+| `dash` | `null` | `[dash, gap]` in screen pixels, or `null` for solid. |
+| `arrow` | `"none"` | `"start"`, `"end"` (at `targetId`) or `"both"`. |
+| `curve` | `0` | Bows the edge sideways by this fraction of its length (−1 to 1). Edges both ways between one pair, with the same curve, part. |
+
+**Every drawn edge is also in the outline**, as a link to its far end, so a relationship that can
+be seen can also be followed from the keyboard and by a screen reader.
+
+**Cap.** A scene draws at most `edges.max` edges (default 500). Over it, edges to the scene's
+`focusId` come first, then the rest in order, and the outline says how many are shown. Dashes are
+the expensive style: see [Performance](/data-explorer/guides/performance/).

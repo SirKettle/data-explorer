@@ -1,0 +1,47 @@
+---
+title: data-explorer
+description: A continuous, zoomable explorer for tree- and graph-shaped data, drawn with PixiJS beside an accessible outline.
+template: splash
+hero:
+  tagline: Zoom into a group to enter it, zoom out to leave, pan across to its neighbours. Your data, any shape of tree or graph, as a space you move through.
+  actions:
+    - text: Get started
+      link: /data-explorer/getting-started/
+      icon: right-arrow
+    - text: See the examples
+      link: /data-explorer/examples/
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+import Demo from "../../components/Demo.astro";
+import ConceptsGraph from "../../demos/concepts-graph.tsx";
+import conceptsGraph from "../../demos/concepts-graph.tsx?raw";
+
+<CardGrid>
+  <Card title="Any data" icon="puzzle">
+    You describe each scene through a small contract: a heading, groups, items and the links
+    between them. The explorer never walks your data, so cycles cost nothing.
+  </Card>
+  <Card title="Continuous" icon="rocket">
+    No page loads between levels: the next scene loads while the viewer zooms towards it and
+    fades in inside the item they are entering.
+  </Card>
+  <Card title="Accessible" icon="open-book">
+    Beside the canvas, an outline of real links and buttons, read aloud and reachable by keyboard.
+    Every item has a page of its own.
+  </Card>
+  <Card title="Small and lazy" icon="seti:typescript">
+    React 18 or 19 and PixiJS 8. PixiJS loads only when the explorer first mounts. Typed
+    throughout, ESM only.
+  </Card>
+</CardGrid>
+
+## Try it
+
+Teams, then people, then one person's neighbourhood. Scroll or pinch to zoom, drag to pan,
+double-click to enter.
+
+<Demo code={conceptsGraph} file="concepts-graph.tsx">
+  <ConceptsGraph client:only="react" />
+</Demo>

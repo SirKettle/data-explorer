@@ -4,6 +4,9 @@
  * Supply a `SceneSource` (how to load a scene for a focus, and where zooming out leads), render
  * `DataExplorer`, and the camera, gestures, transitions and the accessible outline are handled.
  * The canvas is drawn with PixiJS, loaded lazily the first time the view mounts.
+ *
+ * @packageDocumentation
+ * @module main
  */
 export { DataExplorer, type RenderersModule, type DataExplorerProps } from "./DataExplorer";
 export type { ParentLink, SceneSource } from "./scene/source";

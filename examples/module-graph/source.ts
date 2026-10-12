@@ -23,7 +23,7 @@ import { importersOf, IN_CYCLE, MODULES, modulesIn, PACKAGES, type Module } from
  */
 export type Focus = { kind: "package"; pkg: string } | { kind: "module"; id: string };
 
-const href = (focus: Focus) => `/module-graph#${encodeFocus(focus)}`;
+const href = (focus: Focus) => `#${encodeFocus(focus)}`;
 
 export const encodeFocus = (focus: Focus) =>
   focus.kind === "package" ? `package:${focus.pkg}` : `module:${focus.id}`;

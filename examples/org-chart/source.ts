@@ -51,7 +51,7 @@ export function decodeFocus(hash: string): Focus | null {
   return null;
 }
 
-const href = (focus: Focus) => `/org-chart#${encodeFocus(focus)}`;
+const href = (focus: Focus) => `#${encodeFocus(focus)}`;
 
 export const itemId = {
   department: (id: string) => `dept:${id}`,

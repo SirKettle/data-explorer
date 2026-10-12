@@ -2,6 +2,9 @@
  * Driving the explorer without its canvas: the scene stack and camera on their own, and the pure
  * colour and shape choice the canvas makes for each node. For tests, custom renderers and tooling.
  * Nothing here imports PixiJS.
+ *
+ * @packageDocumentation
+ * @module headless
  */
 export { CameraRig, type Camera, type Viewport } from "./camera/camera";
 export {

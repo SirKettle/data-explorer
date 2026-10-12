@@ -1,0 +1,28 @@
+---
+title: Accessibility
+description: The outline beside the canvas, keyboard use, and what a screen reader hears.
+sidebar:
+  order: 9
+---
+
+import Demo from "../../../components/Demo.astro";
+import Accessibility from "../../../demos/accessibility.tsx";
+import AccessibilitySource from "../../../demos/accessibility.tsx?raw";
+
+The canvas is `aria-hidden`. Beside it, the explorer renders an **outline**: the current scene as
+real links (each item's `href`) and buttons (a hollow aggregate), with its badges (`marks`). It is
+visually hidden, but read aloud and reachable by keyboard. The demo shows it, so you can see what is
+announced as you move.
+
+<Demo code={AccessibilitySource} file="accessibility.tsx">
+  <Accessibility client:only="react" />
+</Demo>
+
+- **Keyboard.** Tab to an entry and press Enter: the explorer enters that item, raising
+  `onNodeActivate` first exactly as a double-click does, then moves focus to the new scene with a
+  polite announcement.
+- **Every node needs an `href`**, so every relationship drawn on the canvas is also an ordinary
+  link. If your data has no pages of its own, use stable in-app URLs.
+- **Drawn edges are in the outline too**, as links to their far ends.
+- **Without WebGL**, the canvas is skipped and the outline still works.
+- **Reduced motion** is respected: no pulse, no grow-in, no `animated` renderers.

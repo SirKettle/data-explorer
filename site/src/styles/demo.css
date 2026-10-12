@@ -1,0 +1,80 @@
+/* Demos: the explorer's own classes (it needs none of these to work) sized to fit a docs page. */
+.demo {
+  margin: 1.5rem 0 0.5rem;
+}
+.demo__live {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #0b0e13;
+  color: #eef3fa;
+}
+.demo__live .data-explorer__surface {
+  height: var(--demo-height, 420px);
+}
+.demo figcaption,
+.example-frame figcaption {
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-3);
+  margin-top: 0.4rem;
+}
+.demo-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid #263041;
+  font: 0.85rem/1.4 system-ui, sans-serif;
+}
+.demo-toolbar button,
+.demo-toolbar label {
+  font: inherit;
+  color: inherit;
+  background: #141922;
+  border: 1px solid #263041;
+  border-radius: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+}
+.demo-log {
+  margin: 0;
+  padding: 0.5rem;
+  max-height: 9rem;
+  overflow: auto;
+  border-top: 1px solid #263041;
+  font: 0.78rem/1.4 ui-monospace, monospace;
+  white-space: pre-wrap;
+}
+.example-frame iframe {
+  width: 100%;
+  height: 680px;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  background: #0b0e13;
+}
+@media (max-width: 50rem) {
+  .demo__live .data-explorer__surface {
+    height: min(var(--demo-height, 420px), 60vh);
+  }
+  .example-frame iframe {
+    height: 80vh;
+  }
+}
+
+/* The accessibility demo's "show the outline": undo the outline's inline visually-hidden styles. */
+.show-outline .data-explorer .visually-hidden {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  white-space: normal !important;
+  padding: 0.5rem 1rem !important;
+  border-top: 1px solid #263041;
+  font: 0.85rem/1.5 system-ui, sans-serif;
+}
+.show-outline .data-explorer .visually-hidden a {
+  color: #93c5fd;
+}

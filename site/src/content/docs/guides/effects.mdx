@@ -1,0 +1,36 @@
+---
+title: Glow, pulse and emphasis
+description: Built-in effects items ask for, and the switches that turn them off.
+sidebar:
+  order: 4
+---
+
+import Demo from "../../../components/Demo.astro";
+import Effects from "../../../demos/effects.tsx";
+import EffectsSource from "../../../demos/effects.tsx?raw";
+
+An item asks for an effect; the view's `effects` switch each one globally, so one request can be
+shown several ways.
+
+- **`effects: ["glow"]`** draws a soft light in the item's colour behind it.
+- **`effects: ["pulse"]`** makes that glow breathe, each item on its own phase.
+- **`emphasis: ["ring"]`** draws an outline and a soft halo in the palette's `ownership` colour, for
+  a state worth seeing at a glance (such as "yours"). The ring always draws, since it carries
+  meaning; `effects.halo` switches off only the halo.
+
+<Demo code={EffectsSource} file="effects.tsx">
+  <Effects client:only="react" />
+</Demo>
+
+| Switch | Default | Effect |
+| --- | --- | --- |
+| `glow` | on | Glows on items that ask for `glow` or `pulse`. Off, none glow. |
+| `pulse` | on | Whether a pulse breathes. Off, it holds as a still glow. |
+| `halo` | on | The halo behind a `ring`. |
+| `growIn` | on | An item grows from a dot to its size the first time it is drawn. |
+| `hoverRing` | on | The ring round the hovered item. Its label still shows. |
+| `selectionRing` | on | The ring round the selected item. `onNodeSelect` still fires. |
+
+**Nothing animates on a timer.** A pulse asks for the next frame only while one is on screen; with
+none in view, the canvas draws nothing at rest. Under `prefers-reduced-motion`, a pulse holds still
+and items appear at their size without growing in. A hollow aggregate never glows.

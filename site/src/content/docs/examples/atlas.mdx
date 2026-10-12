@@ -1,0 +1,19 @@
+---
+title: A streaming atlas
+description: The a streaming atlas example, running, with its source.
+sidebar:
+  order: 3
+---
+
+import ExampleFrame from "../../../components/ExampleFrame.astro";
+import f_source_ts from "../../../../../examples/atlas/source.ts?raw";
+import f_main_tsx from "../../../../../examples/atlas/main.tsx?raw";
+import f_data_ts from "../../../../../examples/atlas/data.ts?raw";
+
+The optional members: `loadStreaming` with `expectedItemCount` (countries arrive in pages, into room reserved for them), `invalidate()` (mark a country visited and its ring appears in place), a custom `ramp` for population density, and live `palette` and `background` switches: plain, gradient and image backdrops, and the grid and halo toggled.
+
+The frame below runs the example built from exactly these files. Start with `source.ts`. Every
+example shares one small page shell (`examples/shared/ExampleShell.tsx`): it keeps the focus in the
+URL hash, builds a breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
+
+<ExampleFrame name="atlas" files={{ "source.ts": f_source_ts, "main.tsx": f_main_tsx, "data.ts": f_data_ts }} />

@@ -42,7 +42,7 @@ export const PLANETS: Body[] = [
   { id: "p7-uranus", name: "Uranus", radiusKm: 25_362, face: "uranus", kind: "planet", moons: [moon("m1-miranda", "Miranda", 236), moon("m2-titania", "Titania", 789), moon("m3-oberon", "Oberon", 761)] },
   { id: "p8-neptune", name: "Neptune", radiusKm: 24_622, face: "neptune", kind: "planet", moons: [moon("m1-triton", "Triton", 1_353)] },
   // Its face is served from a second origin with no CORS header: the canvas may not use it.
-  { id: "p9-pluto", name: "Pluto", radiusKm: 1_188, face: "no-cors:pluto", kind: "planet", moons: [moon("m1-charon", "Charon", 606)] },
+  { id: "p9-pluto", name: "Pluto", radiusKm: 1_188, face: "no-cors", kind: "planet", moons: [moon("m1-charon", "Charon", 606)] },
 ];
 
 export const bodyById = new Map<string, Body>([[SUN.id, SUN], ...PLANETS.map((p) => [p.id, p] as const)]);
