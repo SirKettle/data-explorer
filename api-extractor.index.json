@@ -1,0 +1,14 @@
+{
+  "extends": "./api-extractor.base.json",
+  "mainEntryPointFilePath": "<projectFolder>/temp/dts/index.d.ts",
+  "apiReport": {
+    "enabled": true,
+    "reportFileName": "index.api.md",
+    "reportFolder": "<projectFolder>/api/",
+    "reportTempFolder": "<projectFolder>/temp/"
+  },
+  "dtsRollup": {
+    "enabled": true,
+    "untrimmedFilePath": "<projectFolder>/temp/rollup/index.d.ts"
+  }
+}

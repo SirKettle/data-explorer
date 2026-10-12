@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "@thirkettle/data-explorer",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "release-as": "0.1.0"
+    }
+  }
+}

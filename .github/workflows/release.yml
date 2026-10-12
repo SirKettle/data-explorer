@@ -1,0 +1,64 @@
+name: Release
+
+# release-please keeps a release pull request open from Conventional Commits on main. Merging it
+# creates the release, and the publish job below runs in this same workflow (a release made with
+# GITHUB_TOKEN cannot trigger another one). Run it by hand for a dry run: build, checks and
+# `npm publish --dry-run`, publishing nothing.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    # `always()` lets a manual dry run proceed although release-please was skipped.
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing (OIDC) and provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      # Node 24 ships npm 11, which trusted publishing needs (11.5.1 or later).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm --version
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun run build
+      - run: bun run check:size
+      - run: bun run lint:package
+      - name: Dry run
+        if: github.event_name == 'workflow_dispatch'
+        run: npm publish --dry-run --access public
+      - name: Publish with provenance
+        if: github.event_name == 'push'
+        # Trusted publishing (OIDC) needs no token, and no .npmrc. Set the NPM_TOKEN secret only
+        # if a token is needed (for example, a first publish before a trusted publisher exists).
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc; fi
+          npm publish --provenance --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

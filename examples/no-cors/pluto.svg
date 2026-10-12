@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<!-- Served by examples/server.ts from a second port with no CORS header, so the canvas may not
+     use it: the solar-system example shows the fallback and onTextureError. -->
+<rect width="256" height="256" fill="#c9b49a"/>
+<ellipse cx="150" cy="150" rx="70" ry="55" fill="#efe4d2"/>
+</svg>

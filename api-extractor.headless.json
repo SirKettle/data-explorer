@@ -1,0 +1,14 @@
+{
+  "extends": "./api-extractor.base.json",
+  "mainEntryPointFilePath": "<projectFolder>/temp/dts/headless.d.ts",
+  "apiReport": {
+    "enabled": true,
+    "reportFileName": "headless.api.md",
+    "reportFolder": "<projectFolder>/api/",
+    "reportTempFolder": "<projectFolder>/temp/"
+  },
+  "dtsRollup": {
+    "enabled": true,
+    "untrimmedFilePath": "<projectFolder>/temp/rollup/headless.d.ts"
+  }
+}

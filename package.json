@@ -1,0 +1,83 @@
+{
+  "name": "@thirkettle/data-explorer",
+  "version": "0.0.0",
+  "description": "A continuous zoomable explorer for any tree- or graph-shaped data, drawn with PixiJS behind an accessible outline.",
+  "license": "MIT",
+  "author": "Will Thirkettle",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SirKettle/data-explorer.git"
+  },
+  "homepage": "https://github.com/SirKettle/data-explorer#readme",
+  "bugs": {
+    "url": "https://github.com/SirKettle/data-explorer/issues"
+  },
+  "keywords": [
+    "react",
+    "pixi",
+    "pixijs",
+    "zoomable",
+    "explorer",
+    "graph",
+    "tree",
+    "visualisation",
+    "accessible"
+  ],
+  "sideEffects": [
+    "./src/**"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./headless": {
+      "types": "./dist/headless.d.ts",
+      "import": "./dist/headless.js"
+    },
+    "./pixi": {
+      "types": "./dist/pixi.d.ts",
+      "import": "./dist/pixi.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p examples",
+    "api:report": "tsc -p tsconfig.api.json && api-extractor run --local -c api-extractor.index.json && api-extractor run --local -c api-extractor.headless.json && api-extractor run --local -c api-extractor.pixi.json",
+    "lint:package": "publint && attw --pack . --profile esm-only",
+    "check:bundle": "bun run examples/check-bundle.ts",
+    "check:size": "bun run scripts/check-size.ts",
+    "check:consumer": "bun run scripts/check-consumer.ts",
+    "examples": "bun run examples/server.ts"
+  },
+  "peerDependencies": {
+    "pixi.js": "^8.13.2",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@happy-dom/global-registrator": "^20.11.2",
+    "@microsoft/api-extractor": "^7.59.4",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "bun-types": "^1.3.14",
+    "pixi.js": "^8.13.2",
+    "publint": "0.3.25",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.9.3"
+  }
+}

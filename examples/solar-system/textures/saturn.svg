@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs>
+  <radialGradient id="light" cx="0.35" cy="0.32" r="0.8">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.35"/>
+    <stop offset="0.55" stop-color="#fff" stop-opacity="0"/>
+    <stop offset="1" stop-color="#000" stop-opacity="0.45"/>
+  </radialGradient>
+</defs>
+<rect x="0" y="0" width="256" height="26" fill="#e8d3a2" opacity="0.85"/>
+<rect x="0" y="20" width="256" height="17" fill="#e8d3a2" opacity="0.96"/>
+<rect x="0" y="31" width="256" height="19" fill="#cfb784" opacity="0.90"/>
+<rect x="0" y="44" width="256" height="32" fill="#e8d3a2" opacity="0.76"/>
+<rect x="0" y="70" width="256" height="29" fill="#cfb784" opacity="0.77"/>
+<rect x="0" y="93" width="256" height="18" fill="#f4e7c4" opacity="0.86"/>
+<rect x="0" y="105" width="256" height="34" fill="#e8d3a2" opacity="0.99"/>
+<rect x="0" y="133" width="256" height="34" fill="#e8d3a2" opacity="0.89"/>
+<rect x="0" y="161" width="256" height="28" fill="#e8d3a2" opacity="0.99"/>
+<rect x="0" y="183" width="256" height="17" fill="#f4e7c4" opacity="0.96"/>
+<rect x="0" y="194" width="256" height="25" fill="#cfb784" opacity="0.79"/>
+<rect x="0" y="213" width="256" height="19" fill="#f4e7c4" opacity="0.83"/>
+<rect x="0" y="226" width="256" height="21" fill="#e8d3a2" opacity="0.90"/>
+<rect x="0" y="241" width="256" height="22" fill="#cfb784" opacity="0.77"/>
+<rect width="256" height="256" fill="url(#light)"/>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <!-- Contour rings for the atlas example's image backdrop (US071 Step 3). A mid grey-blue, so it reads on either theme; the canvas
+       alpha decides how strong. -->
+  <g fill="none" stroke="#7a8aa6" stroke-width="1.2" opacity="0.6">
+    <ellipse cx="180" cy="170" rx="34" ry="26" transform="rotate(-13 180 170)"/>
+    <ellipse cx="180" cy="170" rx="69" ry="51" transform="rotate(-6 180 170)"/>
+    <ellipse cx="180" cy="170" rx="103" ry="76" transform="rotate(1 180 170)"/>
+    <ellipse cx="180" cy="170" rx="138" ry="102" transform="rotate(8 180 170)"/>
+    <ellipse cx="180" cy="170" rx="172" ry="128" transform="rotate(15 180 170)"/>
+    <ellipse cx="180" cy="170" rx="207" ry="153" transform="rotate(-18 180 170)"/>
+    <ellipse cx="180" cy="170" rx="241" ry="178" transform="rotate(-11 180 170)"/>
+    <ellipse cx="560" cy="380" rx="30" ry="22" transform="rotate(-13 560 380)"/>
+    <ellipse cx="560" cy="380" rx="60" ry="44" transform="rotate(-6 560 380)"/>
+    <ellipse cx="560" cy="380" rx="90" ry="66" transform="rotate(1 560 380)"/>
+    <ellipse cx="560" cy="380" rx="120" ry="88" transform="rotate(8 560 380)"/>
+    <ellipse cx="560" cy="380" rx="150" ry="110" transform="rotate(15 560 380)"/>
+    <ellipse cx="560" cy="380" rx="179" ry="133" transform="rotate(-18 560 380)"/>
+    <ellipse cx="560" cy="380" rx="209" ry="155" transform="rotate(-11 560 380)"/>
+    <ellipse cx="560" cy="380" rx="239" ry="177" transform="rotate(-4 560 380)"/>
+    <ellipse cx="560" cy="380" rx="269" ry="199" transform="rotate(3 560 380)"/>
+    <ellipse cx="690" cy="110" rx="23" ry="17" transform="rotate(-13 690 110)"/>
+    <ellipse cx="690" cy="110" rx="46" ry="34" transform="rotate(-6 690 110)"/>
+    <ellipse cx="690" cy="110" rx="69" ry="51" transform="rotate(1 690 110)"/>
+    <ellipse cx="690" cy="110" rx="92" ry="68" transform="rotate(8 690 110)"/>
+    <ellipse cx="690" cy="110" rx="115" ry="85" transform="rotate(15 690 110)"/>
+    <ellipse cx="300" cy="480" rx="28" ry="20" transform="rotate(-13 300 480)"/>
+    <ellipse cx="300" cy="480" rx="55" ry="41" transform="rotate(-6 300 480)"/>
+    <ellipse cx="300" cy="480" rx="83" ry="61" transform="rotate(1 300 480)"/>
+    <ellipse cx="300" cy="480" rx="110" ry="82" transform="rotate(8 300 480)"/>
+    <ellipse cx="300" cy="480" rx="138" ry="102" transform="rotate(15 300 480)"/>
+    <ellipse cx="300" cy="480" rx="166" ry="122" transform="rotate(-18 300 480)"/>
+  </g>
+</svg>

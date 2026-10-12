@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // Import the package by its published name, as a consumer would. Bun's bundler reads this too.
+    "paths": {
+      "@thirkettle/data-explorer": ["../src/index.ts"],
+      "@thirkettle/data-explorer/headless": ["../src/headless.ts"],
+      "@thirkettle/data-explorer/pixi": ["../src/pixi.ts"]
+    }
+  },
+  "include": ["."]
+}
