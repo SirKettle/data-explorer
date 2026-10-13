@@ -131,8 +131,10 @@ export function attachGestures(host: HTMLElement, rig: CameraRig, hooks: Gesture
   let hoverScheduled = false;
   let pendingHoverPoint: ScreenPoint | null = null;
 
-  // The host is a fixed, full-viewport element, so its rect only changes on resize — cached to
-  // keep `pointermove` off the layout-read path entirely.
+  // Cached to keep `pointermove` off the layout-read path entirely. The host need not be fixed or
+  // full-viewport, and the page around it can still be settling after attach (a header, fonts, an
+  // image above it), so the rect is re-read at the start of every gesture — pointerdown, wheel and
+  // pointerenter — and on resize and scroll, never trusted from attach time alone.
   let rect = host.getBoundingClientRect();
   const refreshRect = () => {
     rect = host.getBoundingClientRect();
@@ -411,6 +413,7 @@ export function attachGestures(host: HTMLElement, rig: CameraRig, hooks: Gesture
   // hovered; unlike `handleHoverMove` this is immediate, not throttled, since it fires at most
   // once per actual leave and a stale label lingering after the cursor is gone is worse than
   // one extra call.
+  host.addEventListener("pointerenter", refreshRect, { signal });
   host.addEventListener(
     "pointerleave",
     (e) => {
@@ -432,6 +435,7 @@ export function attachGestures(host: HTMLElement, rig: CameraRig, hooks: Gesture
       if (hooks.isLocked()) return;
       stopMomentum();
       lastInput = "wheel";
+      refreshRect();
       const factor = Math.exp(-e.deltaY * WHEEL_ZOOM_SENSITIVITY);
       rig.zoomAtScreen(local(e.clientX, e.clientY), factor);
       if (factor > 1) hooks.onZoomIn();
@@ -450,6 +454,8 @@ export function attachGestures(host: HTMLElement, rig: CameraRig, hooks: Gesture
   }
   window.addEventListener("resize", refreshRect, { signal });
   window.addEventListener("orientationchange", refreshRect, { signal });
+  // Capture phase so a scrolling ancestor, not only the window, moves the cached rect too.
+  window.addEventListener("scroll", refreshRect, { capture: true, passive: true, signal });
 
   return {
     /** Removes every listener this call registered (host + window) in one shot — required now
