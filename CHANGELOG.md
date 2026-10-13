@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.2.1...data-explorer-v0.3.0) (2026-10-13)
+
+
+### Features
+
+* custom grid tiles, step and continuous zoom ([#12](https://github.com/SirKettle/data-explorer/issues/12)) ([99dafb7](https://github.com/SirKettle/data-explorer/commit/99dafb7c379c0f9e2aff56bf9fdfc67b238a4d1a))
+
 ## [0.2.1](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.2.0...data-explorer-v0.2.1) (2026-10-13)
 
 
