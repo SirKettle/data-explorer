@@ -19,10 +19,17 @@ has no renderer keep their `shape`.
   <CustomRenderers client:only="react" />
 </Demo>
 
-The module it loads, which is the only file that imports PixiJS:
+The module it loads. It builds its views from the classes `create(kit)` is handed, and imports
+`pixi.js` only as types:
 
 <Code code={RenderersModuleSource.trimEnd()} lang="ts" title="custom-renderers.renderers.ts" />
 
+- **The kit.** `create(kit)` is handed PixiJS's own `Container`, `Graphics`, `Sprite`, `Text` and
+  `Texture`: the ones the package draws with. Build from these and import `pixi.js` only with
+  `import type`, so PixiJS reaches your page by one lazy path, the package's. A second runtime
+  import of `pixi.js` in a lazily loaded module made Bun's bundler emit a PixiJS chunk as one
+  app's page entry (it built, then rendered blank). Other bundlers may cope; the kit makes it a
+  non-question.
 - **The frame** gives `size` (world units: draw centred on 0, 0), `screenSize` (pixels, for level
   of detail), `opacity`, `hovered`, `selected`, `timeMs`, `tint` (the colour the item would have
   had), `texture` (the item's own image, once ready) and `reducedMotion`. The second argument is the

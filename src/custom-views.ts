@@ -28,10 +28,12 @@ export interface ItemFrame<Tex = unknown> {
 }
 
 /** One kind's renderer, over any view type `V` (`./pixi` specialises it to PixiJS containers). */
-export interface ItemRenderer<V, Item, Tex = unknown> {
+export interface ItemRenderer<V, Item, Tex = unknown, Kit = unknown> {
   /** Makes one view. Called when a pool needs one more, not once per item: a view is reused for
-   *  whichever item it is given next, so keep per-item state in `update`, not here. */
-  create(): V;
+   *  whichever item it is given next, so keep per-item state in `update`, not here. `kit` holds
+   *  the renderer's own classes (for PixiJS, `Container`, `Graphics` and the rest), so a renderers
+   *  module can build views without importing the renderer library itself. */
+  create(kit: Kit): V;
   /** Brings the view up to date for `item` this frame. */
   update(view: V, item: Item, frame: ItemFrame<Tex>): void;
   /** Releases whatever `create` made, when a pool shrinks or the explorer unmounts. */
@@ -40,7 +42,7 @@ export interface ItemRenderer<V, Item, Tex = unknown> {
   animated?: boolean;
 }
 
-export type RendererModule<V, Item, Tex = unknown> = Record<string, ItemRenderer<V, Item, Tex>>;
+export type RendererModule<V, Item, Tex = unknown, Kit = unknown> = Record<string, ItemRenderer<V, Item, Tex, Kit>>;
 
 export interface ViewHost<V> {
   attach(view: V): void;
@@ -57,8 +59,8 @@ const SPARE_VIEWS = 16;
  * A renderer that throws is disabled for the rest of the session, its views released, and every
  * item of that kind falls back; it is reported once. So is a kind with no renderer.
  */
-export function createViewPools<V, Item, Tex = unknown>(host: ViewHost<V>, warn: (message: string) => void = console.warn) {
-  let module: RendererModule<V, Item, Tex> | null = null;
+export function createViewPools<V, Item, Tex = unknown, Kit = unknown>(host: ViewHost<V>, warn: (message: string) => void = console.warn, kit?: Kit) {
+  let module: RendererModule<V, Item, Tex, Kit> | null = null;
   const pools = new Map<string, { views: V[]; used: number }>();
   const disabled = new Set<string>();
   const warned = new Set<string>();
@@ -70,7 +72,7 @@ export function createViewPools<V, Item, Tex = unknown>(host: ViewHost<V>, warn:
     warn(message);
   }
 
-  function release(kind: string, renderer: ItemRenderer<V, Item, Tex> | undefined) {
+  function release(kind: string, renderer: ItemRenderer<V, Item, Tex, Kit> | undefined) {
     const pool = pools.get(kind);
     if (!pool) return;
     for (const view of pool.views) {
@@ -84,7 +86,7 @@ export function createViewPools<V, Item, Tex = unknown>(host: ViewHost<V>, warn:
     pools.delete(kind);
   }
 
-  function disable(kind: string, renderer: ItemRenderer<V, Item, Tex>, error: unknown) {
+  function disable(kind: string, renderer: ItemRenderer<V, Item, Tex, Kit>, error: unknown) {
     disabled.add(kind);
     release(kind, renderer);
     once(`throw:${kind}`, `data-explorer: the renderer for kind "${kind}" threw, so items of that kind are drawn as their shape from now on. ${error instanceof Error ? error.message : String(error)}`);
@@ -92,7 +94,7 @@ export function createViewPools<V, Item, Tex = unknown>(host: ViewHost<V>, warn:
 
   return {
     /** The consumer's module, once its lazy import has resolved. */
-    setModule(next: RendererModule<V, Item, Tex>) {
+    setModule(next: RendererModule<V, Item, Tex, Kit>) {
       module = next;
     },
     /** Whether `kind` will be drawn by a renderer (false before the module has loaded, too). */
@@ -118,7 +120,7 @@ export function createViewPools<V, Item, Tex = unknown>(host: ViewHost<V>, warn:
       try {
         let view = pool.views[pool.used];
         if (view === undefined) {
-          view = renderer.create();
+          view = renderer.create(kit as Kit);
           pool.views.push(view);
           host.attach(view);
         }

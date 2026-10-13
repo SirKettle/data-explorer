@@ -115,6 +115,17 @@ describe("custom view pools (US071 AC7)", () => {
     expect(pools.draw("planet", "earth", frame(), () => {})).toBe(true);
   });
 
+  test("create is handed the host's kit, so a renderers module need not import the renderer library", () => {
+    const kit = { Thing: class {} };
+    const given: unknown[] = [];
+    const pools = createViewPools<FakeView, string, unknown, typeof kit>({ attach: () => {}, detach: () => {}, show: () => {} }, () => {}, kit);
+    pools.setModule({ k: { create: (k) => (given.push(k), { id: 1, drew: [] }), update: () => {} } });
+    pools.begin();
+    pools.draw("k", "item", frame(), () => {});
+    pools.end();
+    expect(given).toEqual([kit]);
+  });
+
   test("nothing draws before the module has loaded", () => {
     const pools = createViewPools<FakeView, string>({ attach() {}, detach() {}, show() {} }, () => {});
     expect(pools.has("planet")).toBe(false);

@@ -6,20 +6,28 @@
 // The lifecycle, pooling, error isolation and fallbacks are `custom-views.ts`'s; this file only
 // attaches PixiJS containers to the stage.
 
-import { Container, type Texture } from "pixi.js";
+import { Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import type { RenderNode } from "../camera/scene-stack";
 import { createViewPools } from "../custom-views";
 
 /** `layer` is the renderer's item layer: it sorts by `zIndex`, which the renderer sets on each view
  *  as it places it (see `itemZ`). */
+/** The classes handed to each renderer's `create(kit)`: a renderers module builds its views from
+ *  these, so it never needs to import pixi.js itself (and the page has one lazy path to PixiJS). */
+const PIXI_KIT = { Container, Graphics, Sprite, Text, Texture };
+
 export function createCustomViews(layer: Container) {
-  return createViewPools<Container, RenderNode, Texture>({
-    attach: (view) => layer.addChild(view),
-    detach: (view) => layer.removeChild(view),
-    show: (view, visible) => {
-      view.visible = visible;
+  return createViewPools<Container, RenderNode, Texture, typeof PIXI_KIT>(
+    {
+      attach: (view) => layer.addChild(view),
+      detach: (view) => layer.removeChild(view),
+      show: (view, visible) => {
+        view.visible = visible;
+      },
     },
-  });
+    console.warn,
+    PIXI_KIT,
+  );
 }
 
 export type CustomViews = ReturnType<typeof createCustomViews>;

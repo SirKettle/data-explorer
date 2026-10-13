@@ -1,6 +1,7 @@
-// Import this module only through the dynamic import in custom-renderers.tsx, so it and PixiJS
-// stay out of the page's first load.
-import { Container, Graphics } from "pixi.js";
+// Import this module only through the dynamic import in custom-renderers.tsx, so it stays out of
+// the page's first load. It imports PixiJS only as types: its classes come from `create(kit)`, so
+// PixiJS reaches the page by one lazy path, the package's own.
+import type { Container } from "pixi.js";
 import { defineRenderers } from "@thirkettle/data-explorer/pixi";
 
 const PETALS = 6;
@@ -8,14 +9,14 @@ const PETALS = 6;
 export default defineRenderers({
   flower: {
     // One view, reused for whichever item it is given next: draw at a fixed design size of 100.
-    create() {
-      const view = new Container();
-      const petals = new Graphics();
+    create(kit) {
+      const view: Container = new kit.Container();
+      const petals = new kit.Graphics();
       for (let i = 0; i < PETALS; i++) {
         const a = (i / PETALS) * Math.PI * 2;
         petals.ellipse(Math.cos(a) * 26, Math.sin(a) * 26, 22, 22).fill(0xffffff);
       }
-      view.addChild(petals, new Graphics().circle(0, 0, 16).fill(0xfacc15));
+      view.addChild(petals, new kit.Graphics().circle(0, 0, 16).fill(0xfacc15));
       return view;
     },
     // Each frame: scale to the item's size, tint with its colour, turn slowly.
