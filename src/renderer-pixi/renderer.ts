@@ -26,7 +26,7 @@ import { Application, Container, Graphics, Sprite, Text, TextStyle, Texture, Til
 import type { RenderEdge, RenderNode, TransitionView } from "../camera/scene-stack";
 import { createEdgeDrawer, type EdgeLayer } from "./edges";
 import { createTextureStore, CROP_SIZE } from "./textures";
-import { createCustomViews } from "./custom";
+import { createCustomViews, itemZ } from "./custom";
 import { nearestFirst, type RendererModule } from "../custom-views";
 import { appearanceFor, hashId, type GlowSwitches, type ResolvedPalette, type RampColours } from "./tint";
 import { prefersReducedMotion, pulseLevel, wantsNextFrame } from "../motion";
@@ -303,7 +303,7 @@ export async function createRenderer(
   const edgeDrawer = createEdgeDrawer(world);
 
   // US036 — the ownership halo: a soft, shape-matched glow drawn *behind* the node sprite, so an
-  // owned item reads as "lit up" rather than merely "circled". Added before `nodeLayer` so it sits
+  // owned item reads as "lit up" rather than merely "circled". Added before `itemLayer` so it sits
   // underneath every node regardless of draw order within a frame.
   // US071 — item glows, under the ownership halos and every node, above the edges.
   const glowLayer = new Container();
@@ -312,18 +312,19 @@ export async function createRenderer(
   const haloLayer = new Container();
   world.addChild(haloLayer);
 
-  const nodeLayer = new Container();
-  world.addChild(nodeLayer);
-
-  // US036 3R.2 D5 — the ownership accent ring, one layer above every node sprite so it always
-  // reads as "on top of" the item it marks, the same relationship `selectionRing` already has.
-  // US071 — item images, laid exactly over their own shape sprites (same geometry, same scale).
-  const textureLayer = new Container();
-  world.addChild(textureLayer);
+  // Every item's body (its shape sprite, or a custom renderer's view) and its texture, in one layer
+  // sorted by `zIndex` (`itemZ`): items stack in the order they are drawn, scene layer by scene
+  // layer, so during a transition a custom view or an image from the scene beneath never sits above
+  // the shapes of the scene in front (issue #5). Separate layers for shapes, textures and custom
+  // views stacked by type instead.
+  const itemLayer = new Container();
+  itemLayer.sortableChildren = true;
+  world.addChild(itemLayer);
   const textureStore = createTextureStore(options.textures.budget, () => onBackdropReady?.(), (url) => onTextureError?.(url));
+  const customViews = createCustomViews(itemLayer);
 
-  // US071 — consumer-drawn views for items whose `kind` has a renderer, above the shapes.
-  const customViews = createCustomViews(world);
+  // US036 3R.2 D5 — the ownership accent ring, one layer above every item so it always reads as
+  // "on top of" the item it marks, the same relationship `selectionRing` already has.
 
   const markLayer = new Container();
   world.addChild(markLayer);
@@ -410,7 +411,7 @@ export async function createRenderer(
       sprite = new Sprite(discTexture);
       sprite.anchor.set(0.5);
       spritePool[index] = sprite;
-      nodeLayer.addChild(sprite);
+      itemLayer.addChild(sprite);
     }
     return sprite;
   }
@@ -443,7 +444,7 @@ export async function createRenderer(
       sprite = new Sprite(Texture.EMPTY);
       sprite.anchor.set(0.5);
       texturePool[index] = sprite;
-      textureLayer.addChild(sprite);
+      itemLayer.addChild(sprite);
     }
     return sprite;
   }
@@ -638,6 +639,7 @@ export async function createRenderer(
     let haloIndex = 0;
     let glowIndex = 0;
     let textureIndex = 0;
+    let drawOrder = 0;
 
     // US071 — which items a custom renderer may draw this frame: all of them up to the cap, then the
     // nearest the middle of the view. Keyed by layer, since a preview can repeat an id.
@@ -693,6 +695,7 @@ export async function createRenderer(
 
       const centreX = node.x + node.size / 2;
       const centreY = node.y + node.size / 2;
+      const order = drawOrder++;
 
       // US071 — a custom renderer draws the item instead of its shape and texture. It returns false
       // (no module yet, no renderer for this kind, a throw, over the cap) and the shape is drawn.
@@ -716,6 +719,7 @@ export async function createRenderer(
           (view) => {
             view.position.set(centreX, centreY);
             view.alpha = opacity;
+            view.zIndex = itemZ(order, "body");
           },
         );
       if (!custom) drawShape();
@@ -725,6 +729,7 @@ export async function createRenderer(
         const sprite = acquireSprite(spriteIndex++);
         sprite.visible = true;
         sprite.rotation = 0;
+        sprite.zIndex = itemZ(order, "body");
         sprite.position.set(centreX, centreY);
         // D4/Step 2 — a non-navigable aggregate draws hollow and muted whatever shape it declares, so
         // it can never be mistaken for a real, drillable item (ADR-016 Decision 3).
@@ -758,6 +763,7 @@ export async function createRenderer(
             const textured = acquireTextured(textureIndex++);
             textured.visible = true;
             textured.texture = texture;
+            textured.zIndex = itemZ(order, "texture");
             textured.position.copyFrom(sprite.position);
             textured.scale.set((grow * node.size) / CROP_SIZE);
             textured.alpha = sprite.alpha;
