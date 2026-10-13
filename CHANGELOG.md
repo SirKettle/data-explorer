@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.2.0...data-explorer-v0.2.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* re-read the host rect on wheel, pointerenter and scroll ([#10](https://github.com/SirKettle/data-explorer/issues/10)) ([b29683e](https://github.com/SirKettle/data-explorer/commit/b29683ea8718f6b8dbe1d3df494b9880aa787a9d))
+
 ## [0.2.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.1.1...data-explorer-v0.2.0) (2026-10-13)
 
 
