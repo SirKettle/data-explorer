@@ -1,6 +1,6 @@
 {
   "name": "@thirkettle/data-explorer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A continuous zoomable explorer for any tree- or graph-shaped data, drawn with PixiJS behind an accessible outline.",
   "license": "MIT",
   "author": "Will Thirkettle",
