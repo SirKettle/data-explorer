@@ -22,16 +22,16 @@
 //    texture and hundreds of them is what would actually run a phone out of memory.
 //  * Nothing is drawn on a timer — `draw()` runs only when the camera or the scene changed.
 
-import { Application, Container, Graphics, Sprite, Text, TextStyle, Texture, TilingSprite } from "pixi.js";
+import { Application, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture, TilingSprite } from "pixi.js";
 import type { RenderEdge, RenderNode, TransitionView } from "../camera/scene-stack";
 import { createEdgeDrawer, type EdgeLayer } from "./edges";
 import { createTextureStore, CROP_SIZE } from "./textures";
-import { createCustomViews, itemZ } from "./custom";
+import { createCustomViews, itemZ, PIXI_KIT } from "./custom";
 import { nearestFirst, type RendererModule } from "../custom-views";
 import { appearanceFor, hashId, type GlowSwitches, type ResolvedPalette, type RampColours } from "./tint";
 import { prefersReducedMotion, pulseLevel, wantsNextFrame } from "../motion";
 import type { Camera, ScreenPoint, Viewport } from "../camera/camera";
-import { DEFAULT_OPTIONS, type ResolvedOptions } from "../options";
+import { DEFAULT_OPTIONS, type ExplorerGridTile, type ExplorerGridTileModule, type ResolvedOptions } from "../options";
 
 export interface RendererStats {
   nodes: number;
@@ -296,6 +296,54 @@ export async function createRenderer(
   grid.visible = options.background.grid.visible;
   app.stage.addChild(grid);
   applyBackdrop();
+
+  // A host-drawn tile replaces the dot texture once its lazy module has loaded; until then, and if
+  // it fails, the dots show. `gridTileSize` is the side of whichever texture the grid tiles now.
+  let gridTileSize = GRID_TEXTURE_SIZE;
+  let customGridTexture: Texture | null = null;
+  let loadedGridTile: ExplorerGridTile | null = null;
+  function applyGridTile(next: ExplorerGridTile | null) {
+    if (next === loadedGridTile) return;
+    loadedGridTile = next;
+    const useDots = () => {
+      grid.texture = gridTexture;
+      gridTileSize = GRID_TEXTURE_SIZE;
+      customGridTexture?.destroy(true);
+      customGridTexture = null;
+    };
+    if (!next) return useDots();
+    void next().then(
+      (loaded) => {
+        if (destroyed || loadedGridTile !== next) return;
+        try {
+          const tile = "default" in loaded && typeof loaded.default === "object" ? loaded.default : (loaded as ExplorerGridTileModule);
+          if (!(tile.size > 0) || !Number.isFinite(tile.size)) throw new Error("`size` must be a positive number");
+          const view = tile.draw(PIXI_KIT) as Container;
+          const texture = app.renderer.generateTexture({
+            target: view,
+            frame: new Rectangle(0, 0, tile.size, tile.size),
+            resolution: 2,
+            antialias: true,
+          });
+          view.destroy({ children: true });
+          customGridTexture?.destroy(true);
+          customGridTexture = texture;
+          grid.texture = texture;
+          gridTileSize = tile.size;
+          onBackdropReady?.();
+        } catch (error) {
+          console.warn("data-explorer: the grid tile failed to draw, so the dot grid is used.", error);
+          useDots();
+        }
+      },
+      (error: unknown) => {
+        if (loadedGridTile !== next) return;
+        console.warn("data-explorer: the grid tile module failed to load, so the dot grid is used.", error);
+        useDots();
+      },
+    );
+  }
+  applyGridTile(options.background.grid.tile);
 
   const world = new Container();
   app.stage.addChild(world);
@@ -617,11 +665,21 @@ export async function createRenderer(
     world.scale.set(camera.scale);
     world.position.set(originScreenX, originScreenY);
 
-    let step = 160;
-    while (step * camera.scale < 36) step *= 4;
-    while (step * camera.scale > 190) step /= 4;
+    const gridLook = options.background.grid;
+    let step = gridLook.step;
+    let gridFade = 1;
+    if (gridLook.zoom === "snap") {
+      while (step * camera.scale < 36) step *= 4;
+      while (step * camera.scale > 190) step /= 4;
+    }
     const gridScreenStep = step * camera.scale;
-    grid.tileScale.set(gridScreenStep / GRID_TEXTURE_SIZE);
+    if (gridLook.zoom === "continuous") {
+      // Too fine to read, the pattern fades out rather than aliasing.
+      gridFade = Math.min(1, Math.max(0, (gridScreenStep - gridLook.minScreenStep / 2) / (gridLook.minScreenStep / 2)));
+    }
+    grid.visible = gridLook.visible && gridFade > 0;
+    grid.alpha = gridLook.alpha * gridFade;
+    grid.tileScale.set(gridScreenStep / gridTileSize);
     grid.tilePosition.set(originScreenX, originScreenY);
 
     const halfW = vp.width / 2 / camera.scale;
@@ -995,6 +1053,7 @@ export async function createRenderer(
     grid.visible = options.background.grid.visible;
     grid.alpha = options.background.grid.alpha;
     grid.tint = options.background.grid.color ?? tokens.grid;
+    applyGridTile(options.background.grid.tile);
     textureStore.setBudget(options.textures.budget);
     applyBackdrop();
   }
@@ -1060,6 +1119,7 @@ export async function createRenderer(
       destroyed = true;
       textureStore.destroy();
       customViews.destroy();
+      customGridTexture?.destroy(true);
       app.destroy(true, { children: true, texture: true });
     },
   };

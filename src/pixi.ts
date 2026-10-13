@@ -49,6 +49,22 @@ export function defineRenderers<M extends RendererModule>(module: M): M {
   return module;
 }
 
+/** A grid tile: the pattern that repeats behind the scene, drawn by you.
+ *  `export default defineGridTile({ size: 64, draw(kit) { ... } })` in the module you hand the view as
+ *  `background={{ grid: { tile: () => import("./my-grid-tile") } }}`. */
+export interface GridTile {
+  /** The tile's side in pixels at scale 1. It covers one `step` of the world. */
+  size: number;
+  /** Draws one tile within `0..size` on both axes. Draw in white or greys: the grid's `color`
+   *  tints it, and its `alpha` fades it. Called once, when the tile loads. */
+  draw(kit: PixiKit): Container;
+}
+
+/** Checks a grid tile against the contract and returns it unchanged. */
+export function defineGridTile<T extends GridTile>(tile: T): T {
+  return tile;
+}
+
 /** The scene types a renderer meets on `item`. */
 export type * from "./scene/types";
 /** The view-type-agnostic forms of `ItemFrame` and `ItemRenderer`, which the two above specialise to PixiJS. */

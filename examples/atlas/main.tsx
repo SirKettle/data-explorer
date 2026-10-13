@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
-import { FALLBACK_PALETTE, type ExplorerBackground, type ExplorerEffects, type ExplorerPalette } from "@thirkettle/data-explorer";
+import { FALLBACK_PALETTE, type ExplorerBackground, type ExplorerGridOption, type ExplorerEffects, type ExplorerPalette } from "@thirkettle/data-explorer";
 import { ExampleShell } from "../shared/ExampleShell";
 import { visitedStore, type VisitedStore } from "./data";
 import { atlasSource, decodeContinent, DENSITY_RAMP } from "./source";
@@ -52,10 +52,18 @@ function VisitedToggle({ store, name }: { store: VisitedStore; name: string }) {
   );
 }
 
+/** The grid, in the forms `background.grid` accepts: the built-in dots, a host-drawn tile, or none. */
+const STUD_TILE = () => import("./stud-tile");
+const GRIDS: { name: string; option: ExplorerGridOption }[] = [
+  { name: "dots", option: true },
+  { name: "studs", option: { tile: STUD_TILE, step: 80, zoom: "continuous", alpha: 0.5 } },
+  { name: "off", option: false },
+];
+
 function Atlas() {
   const [mode, setMode] = useState<"dark" | "light">("dark");
   // US071 — declarative options, applied live: no new scene, no camera reset.
-  const [grid, setGrid] = useState(true);
+  const [grid, setGrid] = useState(0);
   const [backdrop, setBackdrop] = useState(0);
   const [glow, setGlow] = useState(0);
   const [halo, setHalo] = useState(true);
@@ -86,7 +94,7 @@ function Atlas() {
       trailOf={(name) => (name === null ? ["World"] : ["World", name])}
       palette={mode === "dark" ? FALLBACK_PALETTE : LIGHT_PALETTE}
       ramp={DENSITY_RAMP}
-      background={{ ...BACKDROPS[backdrop]![mode], grid }}
+      background={{ ...BACKDROPS[backdrop]![mode], grid: GRIDS[grid]!.option }}
       effects={{ halo, ...GLOWS[glow]!.effects }}
       toolbar={
         <>
@@ -96,8 +104,8 @@ function Atlas() {
           <button type="button" onClick={() => setBackdrop((backdrop + 1) % BACKDROPS.length)}>
             Backdrop: {BACKDROPS[backdrop]!.name}
           </button>
-          <button type="button" aria-pressed={grid} onClick={() => setGrid(!grid)}>
-            Grid {grid ? "on" : "off"}
+          <button type="button" onClick={() => setGrid((grid + 1) % GRIDS.length)}>
+            Grid: {GRIDS[grid]!.name}
           </button>
           <button type="button" onClick={() => setGlow((glow + 1) % GLOWS.length)}>
             Visited: {GLOWS[glow]!.name}

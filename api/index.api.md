@@ -177,10 +177,28 @@ export interface ExplorerGradient {
 }
 
 // @public
-export type ExplorerGridOption = boolean | {
+export type ExplorerGridOption = boolean | ExplorerGridStyle;
+
+// @public
+export interface ExplorerGridStyle {
     alpha?: number;
     color?: ExplorerColour;
-};
+    minScreenStep?: number;
+    step?: number;
+    tile?: ExplorerGridTile;
+    zoom?: "snap" | "continuous";
+}
+
+// @public
+export type ExplorerGridTile = () => Promise<ExplorerGridTileModule | {
+    default: ExplorerGridTileModule;
+}>;
+
+// @public
+export interface ExplorerGridTileModule {
+    draw(kit: any): unknown;
+    size: number;
+}
 
 // @public
 export type ExplorerItem<F = unknown, D = unknown> = ExplorerNode<F, D> | ExplorerCluster<F, D>;

@@ -7,8 +7,39 @@
 
 import { parseColour, type ExplorerColour } from "./colour";
 
-/** The dot grid behind the scene. `false` hides it; an object restyles it. */
-export type ExplorerGridOption = boolean | { alpha?: number; color?: ExplorerColour };
+/** A grid pattern a host draws itself: one repeating tile, rendered once to a texture and tiled
+ *  behind the scene. Write one with `defineGridTile` from `@thirkettle/data-explorer/pixi`. */
+export interface ExplorerGridTileModule {
+  /** The tile's side in pixels at scale 1. It maps to one `step` of the world. */
+  size: number;
+  /** Draws one tile into a PixiJS container from `kit`, within `0..size` on both axes, in white
+   *  (or greys) so the grid's `color` tints it. Called once per load. Its type is precise in `./pixi`. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  draw(kit: any): unknown;
+}
+
+/** How a grid is given: a lazy import, like `renderers`, so the tile's PixiJS code loads with the canvas. */
+export type ExplorerGridTile = () => Promise<ExplorerGridTileModule | { default: ExplorerGridTileModule }>;
+
+/** Styling for the grid behind the scene. */
+export interface ExplorerGridStyle {
+  /** Opacity, 0 to 1; 0.22 by default. */
+  alpha?: number;
+  /** Overrides `palette.grid`. */
+  color?: ExplorerColour;
+  /** The world distance between repeats of the pattern; 160 by default. */
+  step?: number;
+  /** `snap` (the default) keeps the spacing on screen between 36 and 190 px by stepping it by 4×
+   *  as you zoom. `continuous` keeps `step` fixed in the world, scaling smoothly, like a baseplate. */
+  zoom?: "snap" | "continuous";
+  /** With `continuous`: the on-screen spacing in px below which the grid fades out; 8 by default. */
+  minScreenStep?: number;
+  /** Your own pattern in place of the built-in dots: `tile={() => import("./my-grid-tile")}`. */
+  tile?: ExplorerGridTile;
+}
+
+/** The grid behind the scene. `false` hides it; an object restyles it. */
+export type ExplorerGridOption = boolean | ExplorerGridStyle;
 
 /** A linear gradient across the view. `angle` is in degrees, as in CSS: 180 (the default) runs
  *  from the top (`from`) to the bottom (`to`), 90 from left to right. */
@@ -40,7 +71,7 @@ export interface ExplorerBackground {
   gradient?: ExplorerGradient | null;
   /** An image fixed to the view, above the gradient: a URL, or `{ url, fit, alpha }`. */
   image?: string | ExplorerBackgroundImage | null;
-  /** The dot grid, on top: `false` hides it, `{ alpha, color }` restyles it. */
+  /** The grid, on top: `false` hides it, `{ alpha, color, step, zoom, tile }` restyles it. */
   grid?: ExplorerGridOption;
 }
 
@@ -143,7 +174,16 @@ export interface ResolvedOptions {
     gradient: { from: number; to: number; angle: number } | null;
     image: { url: string; fit: "cover" | "tile"; alpha: number } | null;
     /** `color: null` means "use `palette.grid`". */
-    grid: { visible: boolean; alpha: number; color: number | null };
+    grid: {
+      visible: boolean;
+      alpha: number;
+      color: number | null;
+      step: number;
+      zoom: "snap" | "continuous";
+      minScreenStep: number;
+      /** `null` means the built-in dots. */
+      tile: ExplorerGridTile | null;
+    };
   };
   /** The resolved `effects`, with each effect's sizes and timings. */
   effects: {
@@ -181,7 +221,7 @@ export const DEFAULT_MAX_EDGES = 500;
 
 /** What the renderer drew before US071, as one value. `resolveOptions` copies it; never mutate it. */
 export const DEFAULT_OPTIONS: ResolvedOptions = {
-  background: { color: null, gradient: null, image: null, grid: { visible: true, alpha: 0.22, color: null } },
+  background: { color: null, gradient: null, image: null, grid: { visible: true, alpha: 0.22, color: null, step: 160, zoom: "snap", minScreenStep: 8, tile: null } },
   effects: {
     growIn: { enabled: true, durationMs: 420, staggerMs: 320, startScale: 0.1 },
     halo: { enabled: true, scale: 1.7, alpha: 0.3 },
@@ -218,11 +258,7 @@ export function resolveOptions(options: ExplorerOptions = {}): ResolvedOptions {
       color: parseColour(background.color),
       gradient: resolveGradient(background.gradient),
       image: resolveImage(background.image),
-      grid: {
-        visible: grid !== false,
-        alpha: typeof grid === "object" ? unit(grid.alpha, d.background.grid.alpha) : d.background.grid.alpha,
-        color: typeof grid === "object" ? parseColour(grid.color) : null,
-      },
+      grid: resolveGrid(grid),
     },
     effects: {
       growIn: { ...d.effects.growIn, enabled: effects.growIn ?? true },
@@ -247,6 +283,20 @@ export function resolveOptions(options: ExplorerOptions = {}): ResolvedOptions {
           ? Math.max(0, Math.floor(options.customViews.max))
           : d.customViews.max,
     },
+  };
+}
+
+function resolveGrid(grid: ExplorerGridOption): ResolvedOptions["background"]["grid"] {
+  const d = DEFAULT_OPTIONS.background.grid;
+  if (typeof grid !== "object") return { ...d, visible: grid !== false };
+  return {
+    visible: true,
+    alpha: unit(grid.alpha, d.alpha),
+    color: parseColour(grid.color),
+    step: positive(grid.step, d.step),
+    zoom: grid.zoom === "continuous" ? "continuous" : "snap",
+    minScreenStep: positive(grid.minScreenStep, d.minScreenStep),
+    tile: typeof grid.tile === "function" ? grid.tile : null,
   };
 }
 
@@ -298,5 +348,14 @@ function resolveImage(image: string | ExplorerBackgroundImage | null | undefined
 
 /** Equal resolved options draw identically, so the view re-applies options only when this changes. */
 export function optionsKey(options: ResolvedOptions): string {
-  return JSON.stringify(options);
+  return JSON.stringify(options, (_key, value: unknown) => (typeof value === "function" ? functionId(value) : value));
+}
+
+// A function has no value to compare, so it stands for itself: the same reference, the same key.
+const functionIds = new WeakMap<object, number>();
+let nextFunctionId = 0;
+function functionId(fn: object): string {
+  let id = functionIds.get(fn);
+  if (id === undefined) functionIds.set(fn, (id = ++nextFunctionId));
+  return `fn#${id}`;
 }
