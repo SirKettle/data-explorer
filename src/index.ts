@@ -36,6 +36,9 @@ export {
   type ExplorerGradient,
   type ExplorerTextures,
   type ExplorerGridOption,
+  type ExplorerGridStyle,
+  type ExplorerGridTile,
+  type ExplorerGridTileModule,
   type ExplorerOptions,
 } from "./options";
 export type {

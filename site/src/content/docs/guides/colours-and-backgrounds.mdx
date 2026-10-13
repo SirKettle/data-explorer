@@ -8,6 +8,10 @@ sidebar:
 import Demo from "../../../components/Demo.astro";
 import ColoursAndBackgrounds from "../../../demos/colours-and-backgrounds.tsx";
 import ColoursAndBackgroundsSource from "../../../demos/colours-and-backgrounds.tsx?raw";
+import CustomGrid from "../../../demos/custom-grid.tsx";
+import CustomGridSource from "../../../demos/custom-grid.tsx?raw";
+import CustomGridTileSource from "../../../demos/custom-grid.tile.ts?raw";
+import { Code } from "@astrojs/starlight/components";
 
 ## Colours
 
@@ -37,4 +41,26 @@ object costs nothing on re-render.
 | `background.color` | `palette.background` | A solid colour behind everything. |
 | `background.gradient` | none | `{ from, to, angle? }`: 180 (the default) runs top to bottom, 90 left to right. |
 | `background.image` | none | A URL, or `{ url, fit?: "cover" \| "tile", alpha? }`, fixed to the view. It needs [CORS](/data-explorer/guides/images-and-cors/). |
-| `background.grid` | on (alpha 0.22, `palette.grid`) | `false` hides it; `{ alpha, color }` restyles it. |
+| `background.grid` | on (alpha 0.22, `palette.grid`) | `false` hides it; `{ alpha, color, step, zoom, minScreenStep, tile }` restyles it. See below. |
+
+### Your own grid
+
+The grid is anchored to the world, so it pans and zooms with the scene. `step` is the world distance
+between repeats (160 by default). `zoom: "snap"` (the default) keeps the spacing between 36 and 190 px
+by stepping it by 4× as you zoom; `zoom: "continuous"` keeps `step` fixed, so the pattern scales
+smoothly like a baseplate, and fades out once it is under `minScreenStep` px (8 by default).
+
+To replace the dots, give `tile` a lazy import, the way you give `renderers`. The module draws one
+repeating tile from the PixiJS classes in `kit`, in white or greys: `color` tints it and `alpha` fades
+it. It is drawn once, at 2× resolution.
+
+<Demo code={CustomGridSource} file="custom-grid.tsx">
+  <CustomGrid client:only="react" />
+</Demo>
+
+The module it loads:
+
+<Code code={CustomGridTileSource.trimEnd()} lang="ts" title="custom-grid.tile.ts" />
+
+Pass the same function each render (a module-level constant, as above), because a new function reloads the tile. If it fails to load or draw, the dots are used.
+

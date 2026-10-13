@@ -4,7 +4,7 @@ import { DEFAULT_OPTIONS, edgeStyleFor, optionsKey, resolveOptions } from "./opt
 describe("resolveOptions (US071 AC1: defaults are what the renderer drew before options)", () => {
   test("pins every default to the constant it replaced in renderer.ts", () => {
     expect(resolveOptions()).toEqual({
-      background: { color: null, gradient: null, image: null, grid: { visible: true, alpha: 0.22, color: null } },
+      background: { color: null, gradient: null, image: null, grid: { visible: true, alpha: 0.22, color: null, step: 160, zoom: "snap", minScreenStep: 8, tile: null } },
       effects: {
         growIn: { enabled: true, durationMs: 420, staggerMs: 320, startScale: 0.1 },
         halo: { enabled: true, scale: 1.7, alpha: 0.3 },
@@ -36,10 +36,10 @@ describe("resolveOptions (US071 AC1: defaults are what the renderer drew before 
   });
 
   test("the grid can be hidden or restyled", () => {
-    expect(resolveOptions({ background: { grid: false } }).background.grid).toEqual({ visible: false, alpha: 0.22, color: null });
-    expect(resolveOptions({ background: { grid: true } }).background.grid).toEqual({ visible: true, alpha: 0.22, color: null });
-    expect(resolveOptions({ background: { grid: { alpha: 0.5 } } }).background.grid).toEqual({ visible: true, alpha: 0.5, color: null });
-    expect(resolveOptions({ background: { grid: {} } }).background.grid).toEqual({ visible: true, alpha: 0.22, color: null });
+    expect(resolveOptions({ background: { grid: false } }).background.grid).toEqual({ ...DEFAULT_OPTIONS.background.grid, visible: false });
+    expect(resolveOptions({ background: { grid: true } }).background.grid).toEqual(DEFAULT_OPTIONS.background.grid);
+    expect(resolveOptions({ background: { grid: { alpha: 0.5 } } }).background.grid).toEqual({ ...DEFAULT_OPTIONS.background.grid, alpha: 0.5 });
+    expect(resolveOptions({ background: { grid: {} } }).background.grid).toEqual(DEFAULT_OPTIONS.background.grid);
   });
 
   test("a grid alpha outside 0-1 is clamped, and a non-number falls back to the default", () => {
@@ -78,7 +78,7 @@ describe("resolveOptions (US071 AC1: defaults are what the renderer drew before 
     expect(resolved.color).toBe(0x102030);
     expect(resolved.gradient).toEqual({ from: 0xff0000, to: 0x0000ff, angle: 270 });
     expect(resolved.image).toEqual({ url: "/stars.png", fit: "cover", alpha: 1 });
-    expect(resolved.grid).toEqual({ visible: true, alpha: 0.22, color: 0x008000 });
+    expect(resolved.grid).toEqual({ ...DEFAULT_OPTIONS.background.grid, color: 0x008000 });
 
     expect(resolveOptions({ background: { gradient: { from: "#fff", to: "#000" } } }).background.gradient).toEqual({ from: 0xffffff, to: 0, angle: 180 });
     expect(resolveOptions({ background: { image: { url: "/t.png", fit: "tile", alpha: 2 } } }).background.image).toEqual({ url: "/t.png", fit: "tile", alpha: 1 });
@@ -112,5 +112,26 @@ describe("resolveOptions (US071 AC1: defaults are what the renderer drew before 
     expect(resolveOptions({ textures: { minDiameterPx: 80, budget: 12.9 } }).textures).toEqual({ minDiameterPx: 80, budget: 12 });
     expect(resolveOptions({ textures: { minDiameterPx: -5, budget: Number.NaN } }).textures).toEqual({ minDiameterPx: 48, budget: 128 });
     expect(resolveOptions({ textures: { budget: -1 } }).textures.budget).toBe(0);
+  });
+
+  test("a custom grid: step, zoom and a tile loader", () => {
+    const tile = async () => ({ size: 64, draw: () => ({}) });
+    const grid = resolveOptions({ background: { grid: { step: 32, zoom: "continuous", minScreenStep: 12, tile } } }).background.grid;
+    expect(grid).toEqual({ ...DEFAULT_OPTIONS.background.grid, step: 32, zoom: "continuous", minScreenStep: 12, tile });
+  });
+
+  test("a bad step, zoom or tile falls back to the defaults", () => {
+    // @ts-expect-error — deliberately wrong
+    const grid = resolveOptions({ background: { grid: { step: -4, minScreenStep: Number.NaN, zoom: "nope", tile: "x" } } }).background.grid;
+    expect(grid).toEqual(DEFAULT_OPTIONS.background.grid);
+  });
+
+  test("the key tells one tile loader from another, and the same loader from itself", () => {
+    const a = async () => ({ size: 64, draw: () => ({}) });
+    const b = async () => ({ size: 64, draw: () => ({}) });
+    const key = (tile: typeof a) => optionsKey(resolveOptions({ background: { grid: { tile } } }));
+    expect(key(a)).toBe(key(a));
+    expect(key(a)).not.toBe(key(b));
+    expect(key(a)).not.toBe(optionsKey(resolveOptions()));
   });
 });

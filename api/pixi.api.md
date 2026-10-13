@@ -11,6 +11,9 @@ import type { Text as Text_2 } from 'pixi.js';
 import type { Texture } from 'pixi.js';
 
 // @public
+export function defineGridTile<T extends GridTile>(tile: T): T;
+
+// @public
 export function defineRenderers<M extends RendererModule>(module: M): M;
 
 // @public
@@ -117,6 +120,12 @@ export interface GenericItemRenderer<V, Item, Tex = unknown, Kit = unknown> {
     create(kit: Kit): V;
     destroy?(view: V): void;
     update(view: V, item: Item, frame: GenericItemFrame<Tex>): void;
+}
+
+// @public
+export interface GridTile {
+    draw(kit: PixiKit): Container;
+    size: number;
 }
 
 // @public

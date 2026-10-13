@@ -14,7 +14,7 @@ import { createViewPools } from "../custom-views";
  *  as it places it (see `itemZ`). */
 /** The classes handed to each renderer's `create(kit)`: a renderers module builds its views from
  *  these, so it never needs to import pixi.js itself (and the page has one lazy path to PixiJS). */
-const PIXI_KIT = { Container, Graphics, Sprite, Text, Texture };
+export const PIXI_KIT = { Container, Graphics, Sprite, Text, Texture };
 
 export function createCustomViews(layer: Container) {
   return createViewPools<Container, RenderNode, Texture, typeof PIXI_KIT>(
