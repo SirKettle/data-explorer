@@ -111,3 +111,54 @@ describe("attachGestures hover (US036 plan Step 3R.2 / D6)", () => {
     expect(onHover).not.toHaveBeenCalled();
   });
 });
+
+/** Moves the host to `top` px down the page, as a header or late-loading content above it would. */
+function placeHost(host: HTMLElement, top: number): void {
+  host.getBoundingClientRect = () => new DOMRect(0, top, viewport.width, viewport.height);
+}
+
+/** happy-dom's `WheelEvent` drops `clientX`/`clientY`, so they are set on the event directly. */
+function wheel(deltaY: number, x: number, y: number): WheelEvent {
+  const event = new WheelEvent("wheel", { deltaY, bubbles: true, cancelable: true });
+  Object.defineProperties(event, { clientX: { value: x }, clientY: { value: y } });
+  return event;
+}
+
+describe("attachGestures host rect (the page can move the host after attach)", () => {
+  test("a wheel zoom anchors on the cursor even when the host moved since attach, before any pointerdown", () => {
+    const { hooks } = makeHooks();
+    const { host, rig } = setup(hooks);
+    placeHost(host, 120);
+    const underCursor = rig.screenToWorld(300, 200);
+
+    host.dispatchEvent(wheel(-100, 300, 320));
+
+    const after = rig.worldToScreen(underCursor.x, underCursor.y);
+    expect(after.x).toBeCloseTo(300);
+    expect(after.y).toBeCloseTo(200);
+  });
+
+  test("hover reports host-local points once the pointer enters a host that moved since attach", async () => {
+    const { hooks, onHover } = makeHooks();
+    const { host } = setup(hooks);
+    placeHost(host, 120);
+
+    host.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "mouse" }));
+    host.dispatchEvent(pointerMove(1, 300, 320));
+    await sleep(30);
+
+    expect(onHover).toHaveBeenCalledWith({ x: 300, y: 200 });
+  });
+
+  test("scrolling the page re-reads the host rect", async () => {
+    const { hooks, onHover } = makeHooks();
+    const { host } = setup(hooks);
+    placeHost(host, 120);
+
+    window.dispatchEvent(new Event("scroll"));
+    host.dispatchEvent(pointerMove(1, 300, 320));
+    await sleep(30);
+
+    expect(onHover).toHaveBeenCalledWith({ x: 300, y: 200 });
+  });
+});
