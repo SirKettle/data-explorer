@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.1.1...data-explorer-v0.2.0) (2026-10-13)
+
+
+### Features
+
+* hand renderers a kit of PixiJS classes in create(kit) ([#8](https://github.com/SirKettle/data-explorer/issues/8)) ([34cded3](https://github.com/SirKettle/data-explorer/commit/34cded3f8df2d01871866676ceb1b974b43f6876))
+
 ## [0.1.1](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.1.0...data-explorer-v0.1.1) (2026-10-13)
 
 
