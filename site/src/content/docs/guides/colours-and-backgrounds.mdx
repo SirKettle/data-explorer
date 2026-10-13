@@ -8,6 +8,10 @@ sidebar:
 import Demo from "../../../components/Demo.astro";
 import ColoursAndBackgrounds from "../../../demos/colours-and-backgrounds.tsx";
 import ColoursAndBackgroundsSource from "../../../demos/colours-and-backgrounds.tsx?raw";
+import CustomGrid from "../../../demos/custom-grid.tsx";
+import CustomGridSource from "../../../demos/custom-grid.tsx?raw";
+import CustomGridTileSource from "../../../demos/custom-grid.tile.ts?raw";
+import { Code } from "@astrojs/starlight/components";
 
 ## Colours
 
@@ -50,22 +54,13 @@ To replace the dots, give `tile` a lazy import, the way you give `renderers`. Th
 repeating tile from the PixiJS classes in `kit`, in white or greys: `color` tints it and `alpha` fades
 it. It is drawn once, at 2× resolution.
 
-```ts
-// stud-tile.ts
-import { defineGridTile } from "@thirkettle/data-explorer/pixi";
+<Demo code={CustomGridSource} file="custom-grid.tsx">
+  <CustomGrid client:only="react" />
+</Demo>
 
-export default defineGridTile({
-  size: 64,
-  draw(kit) {
-    const tile = new kit.Container();
-    tile.addChild(new kit.Graphics().circle(32, 32, 14).fill(0xffffff).stroke({ width: 2, color: 0x808080 }));
-    return tile;
-  },
-});
+The module it loads:
 
-// <DataExplorer background={{ grid: { tile: () => import("./stud-tile"), step: 80, zoom: "continuous" } }} />
-```
+<Code code={CustomGridTileSource.trimEnd()} lang="ts" title="custom-grid.tile.ts" />
 
-Pass the same function each render (a module-level constant, or an inline `import()` arrow you keep
-stable), because a new function reloads the tile. If it fails to load or draw, the dots are used.
+Pass the same function each render (a module-level constant, as above), because a new function reloads the tile. If it fails to load or draw, the dots are used.
 
