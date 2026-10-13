@@ -5,6 +5,9 @@
 ```ts
 
 import type { Container } from 'pixi.js';
+import type { Graphics } from 'pixi.js';
+import type { Sprite } from 'pixi.js';
+import type { Text as Text_2 } from 'pixi.js';
 import type { Texture } from 'pixi.js';
 
 // @public
@@ -109,9 +112,9 @@ export interface GenericItemFrame<Tex = unknown> {
 }
 
 // @public
-export interface GenericItemRenderer<V, Item, Tex = unknown> {
+export interface GenericItemRenderer<V, Item, Tex = unknown, Kit = unknown> {
     animated?: boolean;
-    create(): V;
+    create(kit: Kit): V;
     destroy?(view: V): void;
     update(view: V, item: Item, frame: GenericItemFrame<Tex>): void;
 }
@@ -120,7 +123,16 @@ export interface GenericItemRenderer<V, Item, Tex = unknown> {
 export type ItemFrame = GenericItemFrame<Texture>;
 
 // @public
-export type ItemRenderer<V extends Container = any> = GenericItemRenderer<V, RenderNode, Texture>;
+export type ItemRenderer<V extends Container = any> = GenericItemRenderer<V, RenderNode, Texture, PixiKit>;
+
+// @public
+export interface PixiKit {
+    Container: typeof Container;
+    Graphics: typeof Graphics;
+    Sprite: typeof Sprite;
+    Text: typeof Text_2;
+    Texture: typeof Texture;
+}
 
 // @public
 export type RendererModule = Record<string, ItemRenderer>;

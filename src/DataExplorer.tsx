@@ -16,7 +16,7 @@ import { capEdges } from "./scene/edge-geometry";
 export type RenderersModule = Record<
   string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  { create(): unknown; update(view: any, item: any, frame: any): void; destroy?(view: any): void; animated?: boolean }
+  { create(kit: any): unknown; update(view: any, item: any, frame: any): void; destroy?(view: any): void; animated?: boolean }
 >;
 import {
   optionsKey,

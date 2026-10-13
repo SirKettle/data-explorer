@@ -65,6 +65,27 @@ describe("custom views stack with their own scene layer (issue #5)", () => {
     expect(order).toEqual(["shape:a", "texture:a", "shape:b"]);
   });
 
+  test("create is handed PixiJS's own classes (the kit), the same ones the package draws with", () => {
+    const layer = new Container();
+    const views = createCustomViews(layer);
+    let kitSeen: Record<string, unknown> | null = null;
+    views.setModule({
+      planet: {
+        create: (kit: Record<string, unknown>) => {
+          kitSeen = kit;
+          return new (kit.Container as typeof Container)();
+        },
+        update: () => {},
+      },
+    });
+    views.begin();
+    views.draw("planet", node("x"), frame, () => {});
+    views.end();
+    expect(Object.keys(kitSeen!).sort()).toEqual(["Container", "Graphics", "Sprite", "Text", "Texture"]);
+    expect(kitSeen!.Container).toBe(Container);
+    expect(layer.children[0]).toBeInstanceOf(Container);
+  });
+
   test("views attach to the item layer itself, not a layer of their own", () => {
     const layer = new Container();
     const views = createCustomViews(layer);

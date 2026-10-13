@@ -293,7 +293,7 @@ export interface RampColours {
 
 // @public
 export type RenderersModule = Record<string, {
-    create(): unknown;
+    create(kit: any): unknown;
     update(view: any, item: any, frame: any): void;
     destroy?(view: any): void;
     animated?: boolean;
