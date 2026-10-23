@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.3.0...data-explorer-v0.4.0) (2026-10-23)
+
+
+### Features
+
+* presence, to scale and fade items in place without a new layout ([#14](https://github.com/SirKettle/data-explorer/issues/14)) ([b656dfe](https://github.com/SirKettle/data-explorer/commit/b656dfeaad7230c853ec0d5c564eae2b3660169d))
+
 ## [0.3.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.2.1...data-explorer-v0.3.0) (2026-10-13)
 
 
