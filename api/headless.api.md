@@ -28,6 +28,9 @@ export class CameraRig {
 }
 
 // @public
+export function clampPresence(value: number | undefined): number;
+
+// @public
 export function createSceneStack<F>(input: SceneStackDeps<F>): {
     readonly current: StackedScene<F>;
     readonly depth: number;
@@ -70,6 +73,9 @@ export const DEFAULT_MAX_EDGES = 500;
 
 // @public
 export const DEFAULT_OPTIONS: ResolvedOptions;
+
+// @public
+export function easePresence(shown: number, target: number, elapsedMs: number, reducedMotion: boolean): number;
 
 // @public
 export function edgeStyleFor(edges: ResolvedOptions["edges"], kind: string): ResolvedEdgeStyle;
@@ -252,6 +258,9 @@ export interface ExplorerPalette {
 }
 
 // @public
+export type ExplorerPresence = (id: string) => number | undefined;
+
+// @public
 export interface ExplorerScene<F = unknown, D = unknown> {
     clusters: ExplorerCluster<F, D>[];
     edges: ExplorerEdge[];
@@ -321,6 +330,21 @@ export type ParentLink<F> = {
 
 // @public
 export function parseColour(value: ExplorerColour | null | undefined): number | null;
+
+// @public
+export const PRESENCE_EASE_MS = 140;
+
+// @public
+export const PRESENCE_GHOST: {
+    readonly scale: 0.4;
+    readonly alpha: 0.14;
+};
+
+// @public
+export function presenceLook(presence: number): {
+    scale: number;
+    alpha: number;
+};
 
 // @public
 export const PREVIEW_RETRY_MS = 30000;

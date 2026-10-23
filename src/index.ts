@@ -9,6 +9,7 @@
  * @module main
  */
 export { DataExplorer, type RenderersModule, type DataExplorerProps } from "./DataExplorer";
+export type { ExplorerPresence } from "./presence";
 export type { ParentLink, SceneSource } from "./scene/source";
 export { createSceneSource, type CachedSceneSource, type SceneSourceOptions } from "./scene/create-source";
 export {

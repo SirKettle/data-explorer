@@ -1,3 +1,4 @@
+import type { ExplorerPresence } from "./presence";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CameraRig, fitCamera, scheduleFrame } from "./camera/camera";
 import { attachGestures, type GestureHandle } from "./camera/gestures";
@@ -203,6 +204,14 @@ export interface DataExplorerProps<F, D = unknown> {
   effects?: ExplorerEffects;
   /** US071 — draw the scene's edges, styled per `kind`. Off by default. Changes apply live. */
   edges?: ExplorerEdges;
+  /**
+   * How present each item is, from 0 to 1, by id (`undefined` is 1). Presence scales and fades an
+   * item where it stands: the layout is untouched, so a time slider or a filter can change it on
+   * every frame without anything moving. At 0 an item is a small, faint, unlabelled ghost that can
+   * still be selected and entered. Pass a new function when the answer changes and items ease to
+   * it (at once under reduced motion). Changes apply live.
+   */
+  presence?: ExplorerPresence;
   /** Shown while the first scene loads. */
   renderLoading?: () => ReactNode;
   /** Shown when the first scene fails to load. */
@@ -238,6 +247,7 @@ export function DataExplorer<F, D = unknown>({
   background,
   effects,
   edges,
+  presence,
   textures,
   renderers,
   customViews,
@@ -277,6 +287,10 @@ export function DataExplorer<F, D = unknown>({
   const resolvedPalette = useMemo(() => resolvePalette(palette), [palette]);
   const paletteRef = useRef(resolvedPalette);
   paletteRef.current = resolvedPalette;
+  // Presence: the same live path as the palette, unresolved (it is already a function).
+  const presenceRef = useRef(presence);
+  presenceRef.current = presence;
+  const setPresenceRef = useRef<((presence: ExplorerPresence | undefined) => void) | null>(null);
   const rampAtMount = useRef(ramp);
   // US071 — resolved, and compared by value, so an inline `effects={{ … }}` does not redraw on
   // every parent render. Applied live through `setOptionsRef`, the same path as the palette.
@@ -486,6 +500,11 @@ export function DataExplorer<F, D = unknown>({
           renderer.setOptions(next);
           requestDraw();
         };
+        setPresenceRef.current = (next) => {
+          renderer.setPresence(next ?? null);
+          requestDraw();
+        };
+        renderer.setPresence(presenceRef.current ?? null);
         // A palette or options change that arrived while the renderer chunk was loading had no
         // renderer to reach.
         if (paletteRef.current !== startPalette) renderer.setPalette(paletteRef.current);
@@ -611,6 +630,10 @@ export function DataExplorer<F, D = unknown>({
   useEffect(() => {
     setOptionsRef.current?.(resolvedOptions);
   }, [resolvedOptions]);
+
+  useEffect(() => {
+    setPresenceRef.current?.(presence);
+  }, [presence]);
 
   function handleOutlineActivate(id: string) {
     const stack = stackRef.current;

@@ -22,6 +22,7 @@
 //    texture and hundreds of them is what would actually run a phone out of memory.
 //  * Nothing is drawn on a timer — `draw()` runs only when the camera or the scene changed.
 
+import { clampPresence, easePresence, MAX_PRESENCE_FRAME_MS, presenceLook, type ExplorerPresence } from "../presence";
 import { Application, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture, TilingSprite } from "pixi.js";
 import type { RenderEdge, RenderNode, TransitionView } from "../camera/scene-stack";
 import { createEdgeDrawer, type EdgeLayer } from "./edges";
@@ -422,6 +423,12 @@ export async function createRenderer(
   // US071 — a `pulse` glow was drawn on screen last frame, so the next one is wanted too.
   let pulsing = false;
   let reducedMotion = false;
+  // Presence (`DataExplorer`'s `presence` prop): the host's answer per id, and what is on screen,
+  // eased towards it. `presenceMoving` keeps frames coming until every item has arrived.
+  let presenceOf: ExplorerPresence | null = null;
+  const shownPresence = new Map<string, number>();
+  let presenceMoving = false;
+  let lastPresenceFrameAt: number | null = null;
   let nodesById = new Map<string, RenderNode>();
   // The parent's nodes drawn around the current scene (`TransitionView.over`) that the layer marks
   // pointable — hoverable, selectable and hit-testable like the scene's own, but only where none of
@@ -649,9 +656,14 @@ export async function createRenderer(
       return;
     }
     const t0 = performance.now();
+    // Capped: after the canvas sat still, the first frame of a change must ease, not jump.
+    const elapsedMs = lastPresenceFrameAt === null ? 0 : Math.min(t0 - lastPresenceFrameAt, MAX_PRESENCE_FRAME_MS);
+    lastPresenceFrameAt = t0;
     growing = false;
     pulsing = false;
+    presenceMoving = false;
     reducedMotion = prefersReducedMotion();
+    if (shownPresence.size > MAX_REMEMBERED_IDS) shownPresence.clear();
     textureStore.beginFrame();
     customViews.begin();
     if (firstDrawnAt.size > MAX_REMEMBERED_IDS) firstDrawnAt.clear();
@@ -749,6 +761,17 @@ export async function createRenderer(
         grow = growScale(t0 - shownAt, growIn);
         if (grow < 1 || t0 - shownAt < growIn.durationMs) growing = true;
         if (grow <= 0) return; // still waiting out its stagger
+      }
+
+      // Presence scales and fades the item in place; its layout box never changes.
+      if (presenceOf) {
+        const target = clampPresence(presenceOf(node.id));
+        const shown = easePresence(shownPresence.get(node.id) ?? target, target, elapsedMs, reducedMotion);
+        shownPresence.set(node.id, shown);
+        if (shown !== target) presenceMoving = true;
+        const presence = presenceLook(shown);
+        grow *= presence.scale;
+        opacity *= presence.alpha;
       }
 
       const centreX = node.x + node.size / 2;
@@ -1105,13 +1128,18 @@ export async function createRenderer(
     draw,
     /** True while a node drawn last frame is still growing in, or (US071) a pulse is on screen —
      *  keep drawing until neither is. Never under reduced motion. */
-    isAnimating: () => wantsNextFrame({ growing, pulsingOnScreen: pulsing || customViews.animatedOnScreen(), reducedMotion }),
+    isAnimating: () => presenceMoving || wantsNextFrame({ growing, pulsingOnScreen: pulsing || customViews.animatedOnScreen(), reducedMotion }),
     /** US071 — the consumer's renderers module, once its lazy import resolves. */
     setRenderers(module: RendererModule<Container, RenderNode, Texture>) {
       customViews.setModule(module);
     },
     hitTest,
     setPalette,
+    /** Presence, applied live like the palette: no new scene, no new layout. The caller schedules the draw. */
+    setPresence(next: ExplorerPresence | null) {
+      presenceOf = next;
+      if (!next) shownPresence.clear();
+    },
     setOptions,
     resize,
     setResolutionCap,

@@ -20,6 +20,8 @@ export {
   type TransitionView,
 } from "./camera/scene-stack";
 export { appearanceFor, type NodeAppearance } from "./renderer-pixi/tint";
+// How the canvas draws a presence: for custom renderers that want to match it.
+export { clampPresence, easePresence, presenceLook, PRESENCE_GHOST, PRESENCE_EASE_MS, type ExplorerPresence } from "./presence";
 export { createTestStack, type TestStack, type TestStackOptions } from "./camera/test-stack";
 // US072 change 10: tooling-level pieces that left the main entry.
 export { parseColour, resolvePalette } from "./colour";

@@ -42,6 +42,7 @@ export interface DataExplorerProps<F, D = unknown> {
         url: string;
     }) => void;
     palette?: ExplorerPalette;
+    presence?: ExplorerPresence;
     ramp?: RampColours;
     renderCanvasUnavailable?: () => ReactNode;
     renderError?: () => ReactNode;
@@ -242,6 +243,9 @@ export interface ExplorerPalette {
     ownership: ExplorerColour;
     selection: ExplorerColour;
 }
+
+// @public
+export type ExplorerPresence = (id: string) => number | undefined;
 
 // @public
 export interface ExplorerScene<F = unknown, D = unknown> {
