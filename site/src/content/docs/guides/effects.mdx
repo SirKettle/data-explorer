@@ -8,6 +8,8 @@ sidebar:
 import Demo from "../../../components/Demo.astro";
 import Effects from "../../../demos/effects.tsx";
 import EffectsSource from "../../../demos/effects.tsx?raw";
+import Presence from "../../../demos/presence.tsx";
+import PresenceSource from "../../../demos/presence.tsx?raw";
 
 An item asks for an effect; the view's `effects` switch each one globally, so one request can be
 shown several ways.
@@ -41,12 +43,9 @@ and items appear at their size without growing in. A hollow aggregate never glow
 where it stands, and never moves it: the layout comes from `weight` once per scene, so presence
 can change on every frame (a time slider, a filter) while the map stays still.
 
-```tsx
-// Items released by `year` are present in proportion to how much of them existed then.
-const presence = useCallback((id: string) => shareBy(id, year), [year]);
-
-<DataExplorer source={source} focus={focus} presence={presence} />
-```
+<Demo code={PresenceSource} file="presence.tsx">
+  <Presence client:only="react" />
+</Demo>
 
 - **Size follows the square root**, so an item's area is proportional to its presence, the same
   rule `weight` uses.
