@@ -34,3 +34,24 @@ shown several ways.
 **Nothing animates on a timer.** A pulse asks for the next frame only while one is on screen; with
 none in view, the canvas draws nothing at rest. Under `prefers-reduced-motion`, a pulse holds still
 and items appear at their size without growing in. A hollow aggregate never glows.
+
+## Presence
+
+`presence` says how much of each item is there, from 0 to 1, by id. It scales and fades an item
+where it stands, and never moves it: the layout comes from `weight` once per scene, so presence
+can change on every frame (a time slider, a filter) while the map stays still.
+
+```tsx
+// Items released by `year` are present in proportion to how much of them existed then.
+const presence = useCallback((id: string) => shareBy(id, year), [year]);
+
+<DataExplorer source={source} focus={focus} presence={presence} />
+```
+
+- **Size follows the square root**, so an item's area is proportional to its presence, the same
+  rule `weight` uses.
+- **At 0 an item is a ghost:** small, faint and unlabelled, but still drawn, selectable and
+  enterable, so the viewer can see what is not there yet.
+- **`undefined` is 1.** Pass a new function when the answer changes; items ease to it, and settle
+  at once under `prefers-reduced-motion`. The accessible outline lists every item whatever its
+  presence; say what presence means in your own `marks` or labels if it matters.
