@@ -42,6 +42,11 @@ const ramps: Record<string, RampColours> = {
   "Teal to violet": { stops: ["#14b8a6", "#8b5cf6"] },
   "Gold to red": { stops: ["#facc15", "#dc2626"] },
   "Cool, neutral, warm": { stops: ["#3b82f6", "#e5e7eb", "#f97316"] },
+  // Two stops at the same `at` make a hard edge: the first half of the year grey, the second orange.
+  Banded: {
+    stops: ["#94a3b8", { color: "#94a3b8", at: 0.5 }, { color: "#f97316", at: 0.5 }, "#f97316"],
+    interpolation: "srgb",
+  },
 };
 
 export default function Theming() {

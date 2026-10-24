@@ -36,13 +36,9 @@ with `{ color, at }`, and two stops at the same `at` make a hard edge between ba
 - `hsl` turns the hue the shorter way round between each pair of stops, for a sweep round the
   colour wheel. `DEFAULT_RAMP` is one: red through magenta, blue and cyan to green.
 
-```ts
-const twoTone: RampColours = { stops: ["#14b8a6", "#8b5cf6"] };
-const banded: RampColours = { stops: ["#94a3b8", { color: "#94a3b8", at: 0.5 }, { color: "#f97316", at: 0.5 }, "#f97316"], interpolation: "srgb" };
-```
-
 The ramp is compared by value, so an inline object is fine. Pass a different one and the canvas
-re-tints in place, like a palette.
+re-tints in place, like a palette. The demo switches between a two-tone, a diverging and a banded
+ramp.
 
 <Demo code={ThemingSource} file="theming.tsx">
   <Theming client:only="react" />
