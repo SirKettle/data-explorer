@@ -307,11 +307,18 @@ export type ParentLink<F> = {
 
 // @public
 export interface RampColours {
-    fromHue: number;
-    lightness: number;
-    saturation: number;
-    toHue: number;
+    interpolation?: RampInterpolation;
+    stops: readonly RampStop[];
 }
+
+// @public
+export type RampInterpolation = "oklab" | "srgb" | "hsl";
+
+// @public
+export type RampStop = ExplorerColour | {
+    color: ExplorerColour;
+    at: number;
+};
 
 // @public
 export type RenderersModule = Record<string, {

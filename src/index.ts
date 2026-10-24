@@ -26,7 +26,7 @@ export {
   type ExplorerTexture,
   type ExplorerTruncation,
 } from "./scene/types";
-export { DEFAULT_RAMP, FALLBACK_PALETTE, type ExplorerPalette, type RampColours, type ResolvedPalette } from "./renderer-pixi/tint";
+export { DEFAULT_RAMP, FALLBACK_PALETTE, type ExplorerPalette, type RampColours, type RampInterpolation, type RampStop, type ResolvedPalette } from "./renderer-pixi/tint";
 export {
   type ExplorerBackground,
   type ExplorerBackgroundImage,

@@ -193,6 +193,7 @@ export async function createRenderer(
   onTextureError?: (url: string) => void,
 ) {
   let tokens = palette;
+  let currentRamp = ramp;
   let options = initialOptions;
   let destroyed = false;
   let cap = resolutionCap;
@@ -739,7 +740,7 @@ export async function createRenderer(
      *  layer, for the custom-view cap. */
     function drawNode(node: RenderNode, opacity: number, decorated: boolean, tag: string) {
       if (opacity < MIN_DRAWN_ALPHA) return;
-      const look = appearanceFor(node, ramp, switches);
+      const look = appearanceFor(node, currentRamp, switches);
       const spread = look.shape === "nebula" ? NEBULA_SPREAD : 1;
       const reach = (node.size * (spread - 1)) / 2;
       if (
@@ -1135,6 +1136,11 @@ export async function createRenderer(
     },
     hitTest,
     setPalette,
+    /** The colour ramp, applied live like the palette: items re-tint on the next draw, which the
+     *  caller schedules. */
+    setRamp(next: RampColours) {
+      currentRamp = next;
+    },
     /** Presence, applied live like the palette: no new scene, no new layout. The caller schedules the draw. */
     setPresence(next: ExplorerPresence | null) {
       presenceOf = next;

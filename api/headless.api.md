@@ -350,12 +350,22 @@ export function presenceLook(presence: number): {
 export const PREVIEW_RETRY_MS = 30000;
 
 // @public
+export function rampColor(t: number, ramp?: RampColours): number;
+
+// @public
 export interface RampColours {
-    fromHue: number;
-    lightness: number;
-    saturation: number;
-    toHue: number;
+    interpolation?: RampInterpolation;
+    stops: readonly RampStop[];
 }
+
+// @public
+export type RampInterpolation = "oklab" | "srgb" | "hsl";
+
+// @public
+export type RampStop = ExplorerColour | {
+    color: ExplorerColour;
+    at: number;
+};
 
 // @public
 export interface RenderEdge {

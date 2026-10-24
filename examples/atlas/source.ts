@@ -23,13 +23,11 @@ type ContinentName = string;
 const PAGE_SIZE = 4;
 const PAGE_MS = 350;
 
-/** Sparse places blue, crowded places orange. The hue runs past 360 on purpose (hues wrap), so the
- *  ramp goes blue → purple → red → orange instead of back through green. */
+/** Sparse places blue, crowded places orange, by way of purple and red rather than back through
+ *  green: the middle stops steer the hue, and `hsl` turns it the shorter way between each pair. */
 export const DENSITY_RAMP: RampColours = {
-  fromHue: 215,
-  toHue: 385,
-  saturation: 0.75,
-  lightness: 0.58,
+  stops: ["hsl(215 75% 58%)", "hsl(272 75% 58%)", "hsl(328 75% 58%)", "hsl(25 75% 58%)"],
+  interpolation: "hsl",
 };
 const DENSEST = 1500; // people per km², just above the densest country listed
 
