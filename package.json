@@ -60,6 +60,8 @@
     "check:bundle": "bun run examples/check-bundle.ts",
     "check:size": "bun run scripts/check-size.ts",
     "check:consumer": "bun run scripts/check-consumer.ts",
+    "check:docs": "bun run scripts/check-docs.ts",
+    "check": "bun run typecheck && bun test && bun run build && bun run check:size && bun run lint:package && bun run check:bundle && bun run check:bundle --built && bun run check:docs",
     "examples": "bun run examples/server.ts",
     "ladle": "ladle serve",
     "ladle:build": "ladle build"
