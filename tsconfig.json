@@ -18,5 +18,5 @@
       "@thirkettle/data-explorer/pixi": ["./src/pixi.ts"]
     }
   },
-  "include": ["src", "test", "scripts"]
+  "include": ["src", "test", "scripts", "stories"]
 }
