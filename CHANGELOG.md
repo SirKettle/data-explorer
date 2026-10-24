@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.4.0...data-explorer-v0.5.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* RampColours is { stops, interpolation? }; fromHue, toHue, saturation and lightness are gone. DEFAULT_RAMP keeps the same red-magenta-blue-cyan-green sweep as five hsl stops, without the old lift on pure blues.
+
+### Features
+
+* colour-stop ramps, applied live, and a Ladle playground ([#16](https://github.com/SirKettle/data-explorer/issues/16)) ([d7fd9a8](https://github.com/SirKettle/data-explorer/commit/d7fd9a8f452d1a34da5b79b91bf9114550874e24))
+
 ## [0.4.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.3.0...data-explorer-v0.4.0) (2026-10-23)
 
 
