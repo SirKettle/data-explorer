@@ -3,7 +3,8 @@ import { CameraRig } from "../camera/camera";
 import { createSceneStack, type RenderNode } from "../camera/scene-stack";
 import type { SceneSource } from "../scene/source";
 import type { ExplorerScene } from "../scene/types";
-import { appearanceFor, DEFAULT_RAMP, glowFor, nodeTint, rampColor } from "./tint";
+import { parseColour } from "../colour";
+import { appearanceFor, DEFAULT_RAMP, glowFor, nodeTint, rampColor, sameRamp } from "./tint";
 
 /** US071 Step 3 / AC3 — an item's own `color` wins over its ramp position and the per-id tint. */
 
@@ -86,5 +87,67 @@ describe("glowFor (US071 AC5)", () => {
   test("glow off removes every glow, and an aggregate never glows", () => {
     expect(glowFor(renderNode({ effects: ["glow", "pulse"] }), { ...on, glow: false })).toBe("none");
     expect(glowFor(renderNode({ effects: ["pulse"], aggregate: true }), on)).toBe("none");
+  });
+});
+
+describe("ramps are colour stops", () => {
+  const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
+
+  test("the ends are exactly the first and last stops, in every interpolation", () => {
+    for (const interpolation of ["oklab", "srgb", "hsl"] as const) {
+      const ramp = { stops: ["#14b8a6", 0x8b5cf6], interpolation };
+      expect(hex(rampColor(0, ramp))).toBe("#14b8a6");
+      expect(hex(rampColor(1, ramp))).toBe("#8b5cf6");
+    }
+  });
+
+  test("srgb mixes channels; oklab keeps the middle brighter than srgb's", () => {
+    expect(hex(rampColor(0.5, { stops: ["#000000", "#ffffff"], interpolation: "srgb" }))).toMatch(/^#(7f7f7f|808080)$/);
+    const srgb = rampColor(0.5, { stops: ["#ff0000", "#00ff00"], interpolation: "srgb" });
+    const oklab = rampColor(0.5, { stops: ["#ff0000", "#00ff00"] });
+    const sum = (c: number) => ((c >> 16) & 0xff) + ((c >> 8) & 0xff) + (c & 0xff);
+    expect(sum(oklab)).toBeGreaterThan(sum(srgb));
+  });
+
+  test("hsl turns the shorter way: red to blue goes through magenta, not green", () => {
+    const mid = rampColor(0.5, { stops: ["hsl(0 100% 50%)", "hsl(240 100% 50%)"], interpolation: "hsl" });
+    expect(hex(mid)).toBe("#ff00ff");
+  });
+
+  test("bare stops are spread evenly; a placed stop sits where it says", () => {
+    const three = { stops: ["#ff0000", "#00ff00", "#0000ff"], interpolation: "srgb" as const };
+    expect(hex(rampColor(0.5, three))).toBe("#00ff00");
+    const placed = { stops: ["#ff0000", { color: "#00ff00", at: 0.25 }, "#0000ff"], interpolation: "srgb" as const };
+    expect(hex(rampColor(0.25, placed))).toBe("#00ff00");
+  });
+
+  test("two stops at the same position make a hard edge", () => {
+    const banded = { stops: ["#000000", { color: "#000000", at: 0.5 }, { color: "#ffffff", at: 0.5 }, "#ffffff"] };
+    expect(hex(rampColor(0.49, banded))).toBe("#000000");
+    expect(hex(rampColor(0.51, banded))).toBe("#ffffff");
+  });
+
+  test("one stop is a solid colour; unparseable stops are skipped; none left falls back to the default", () => {
+    expect(hex(rampColor(0.7, { stops: ["#123456"] }))).toBe("#123456");
+    expect(hex(rampColor(0.5, { stops: ["nope", "#123456", "also nope"] }))).toBe("#123456");
+    expect(rampColor(0.3, { stops: ["nope"] })).toBe(rampColor(0.3, DEFAULT_RAMP));
+  });
+
+  test("positions outside 0 to 1, and non-numbers, clamp to the ends", () => {
+    const ramp = { stops: ["#ff0000", "#0000ff"] };
+    expect(rampColor(-2, ramp)).toBe(rampColor(0, ramp));
+    expect(rampColor(9, ramp)).toBe(rampColor(1, ramp));
+    expect(rampColor(Number.NaN, ramp)).toBe(rampColor(0, ramp));
+  });
+
+  test("the default still runs red to green by way of blue", () => {
+    expect(hex(rampColor(0, DEFAULT_RAMP))).toBe(hex(parseColour("hsl(0 74% 58%)")!));
+    expect(hex(rampColor(0.5, DEFAULT_RAMP))).toBe(hex(parseColour("hsl(235 74% 64%)")!));
+    expect(hex(rampColor(1, DEFAULT_RAMP))).toBe(hex(parseColour("hsl(130 74% 58%)")!));
+  });
+
+  test("sameRamp compares by value", () => {
+    expect(sameRamp({ stops: ["#fff", "#000"] }, { stops: ["#fff", "#000"] })).toBe(true);
+    expect(sameRamp({ stops: ["#fff", "#000"] }, { stops: ["#fff", "#111"] })).toBe(false);
   });
 });

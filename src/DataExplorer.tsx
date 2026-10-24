@@ -6,7 +6,7 @@ import { createSceneStack, type RenderNode, type SceneStack, type StackedScene }
 import type { SceneSource } from "./scene/source";
 import type { ExplorerItem, ExplorerScene } from "./scene/types";
 import type { Renderer, RendererStats } from "./renderer-pixi/renderer";
-import { DEFAULT_RAMP, FALLBACK_PALETTE, type ExplorerPalette, type RampColours, type ResolvedPalette } from "./renderer-pixi/tint";
+import { DEFAULT_RAMP, FALLBACK_PALETTE, sameRamp, type ExplorerPalette, type RampColours, type ResolvedPalette } from "./renderer-pixi/tint";
 import { resolvePalette } from "./colour";
 import { SceneOutline } from "./views/SceneOutline";
 import { capEdges } from "./scene/edge-geometry";
@@ -196,7 +196,8 @@ export interface DataExplorerProps<F, D = unknown> {
   /** US070 Step 4 — the canvas colours. Pass a new object when they change (a light/dark or
    *  colour-scheme switch) and the live canvas re-tints, with no new scene and no camera reset. */
   palette?: ExplorerPalette;
-  /** The colour ramp item `ramp` positions are drawn on. Read once, when the canvas starts. */
+  /** The colour ramp item `ramp` positions are drawn on. Compared by value; a change re-tints the
+   *  live canvas, with no new scene and no camera reset. */
   ramp?: RampColours;
   /** US071 — the background behind the scene (today: the dot grid). Changes apply live. */
   background?: ExplorerBackground;
@@ -291,7 +292,14 @@ export function DataExplorer<F, D = unknown>({
   const presenceRef = useRef(presence);
   presenceRef.current = presence;
   const setPresenceRef = useRef<((presence: ExplorerPresence | undefined) => void) | null>(null);
-  const rampAtMount = useRef(ramp);
+  // The ramp: the same live path as the palette, kept as one object while its value holds, so an
+  // inline `ramp={{ … }}` neither redraws nor resamples on every parent render.
+  const stableRamp = useRef(ramp);
+  if (!sameRamp(stableRamp.current, ramp)) stableRamp.current = ramp;
+  const currentRamp = stableRamp.current;
+  const rampRef = useRef(currentRamp);
+  rampRef.current = currentRamp;
+  const setRampRef = useRef<((ramp: RampColours) => void) | null>(null);
   // US071 — resolved, and compared by value, so an inline `effects={{ … }}` does not redraw on
   // every parent render. Applied live through `setOptionsRef`, the same path as the palette.
   const resolvedOptions = useResolvedOptions({ background, effects, edges, textures, customViews });
@@ -485,7 +493,8 @@ export function DataExplorer<F, D = unknown>({
         if (cancelled) return;
         const startPalette = paletteRef.current;
         const startOptions = optionsRef.current;
-        const renderer = await createRenderer(host, () => viewport, startPalette, rampAtMount.current, undefined, startOptions, () => requestDraw(), (url) => eventsRef.current.onTextureError?.({ url }));
+        const startRamp = rampRef.current;
+        const renderer = await createRenderer(host, () => viewport, startPalette, startRamp, undefined, startOptions, () => requestDraw(), (url) => eventsRef.current.onTextureError?.({ url }));
         if (cancelled) {
           renderer.destroy();
           return;
@@ -500,6 +509,10 @@ export function DataExplorer<F, D = unknown>({
           renderer.setOptions(next);
           requestDraw();
         };
+        setRampRef.current = (next) => {
+          renderer.setRamp(next);
+          requestDraw();
+        };
         setPresenceRef.current = (next) => {
           renderer.setPresence(next ?? null);
           requestDraw();
@@ -509,6 +522,7 @@ export function DataExplorer<F, D = unknown>({
         // renderer to reach.
         if (paletteRef.current !== startPalette) renderer.setPalette(paletteRef.current);
         if (optionsRef.current !== startOptions) renderer.setOptions(optionsRef.current);
+        if (rampRef.current !== startRamp) renderer.setRamp(rampRef.current);
         renderer.setNodes(stack.current.renderNodes, stack.current.renderEdges, stack.current.scene.focusId ?? null);
         requestDraw();
         void renderersLoad?.then((module) => {
@@ -605,6 +619,7 @@ export function DataExplorer<F, D = unknown>({
       unsubscribeRefresh?.();
       setPaletteRef.current = null;
       setOptionsRef.current = null;
+      setRampRef.current = null;
       stackRef.current = null;
     };
     // Intentionally mount-once (empty deps): the whole point of this surface is one continuous
@@ -630,6 +645,10 @@ export function DataExplorer<F, D = unknown>({
   useEffect(() => {
     setOptionsRef.current?.(resolvedOptions);
   }, [resolvedOptions]);
+
+  useEffect(() => {
+    setRampRef.current?.(currentRamp);
+  }, [currentRamp]);
 
   useEffect(() => {
     setPresenceRef.current?.(presence);

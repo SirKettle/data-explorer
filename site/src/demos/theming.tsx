@@ -37,10 +37,16 @@ const paper: ExplorerPalette = {
   selection: "#1d4ed8",
   hover: "#475569",
 };
-// A ramp is a hue sweep: read once, when the explorer mounts (hence the `key` below).
+// A ramp is colour stops, blended in OKLab unless you say otherwise. Switching re-tints in place.
 const ramps: Record<string, RampColours> = {
-  "Teal to violet": { fromHue: 170, toHue: 280, saturation: 0.65, lightness: 0.55 },
-  "Gold to red": { fromHue: 50, toHue: 0, saturation: 0.8, lightness: 0.5 },
+  "Teal to violet": { stops: ["#14b8a6", "#8b5cf6"] },
+  "Gold to red": { stops: ["#facc15", "#dc2626"] },
+  "Cool, neutral, warm": { stops: ["#3b82f6", "#e5e7eb", "#f97316"] },
+  // Two stops at the same `at` make a hard edge: the first half of the year grey, the second orange.
+  Banded: {
+    stops: ["#94a3b8", { color: "#94a3b8", at: 0.5 }, { color: "#f97316", at: 0.5 }, "#f97316"],
+    interpolation: "srgb",
+  },
 };
 
 export default function Theming() {
@@ -57,7 +63,6 @@ export default function Theming() {
         ))}
       </div>
       <DataExplorer
-        key={ramp}
         source={source}
         focus={null}
         palette={light ? paper : FALLBACK_PALETTE}

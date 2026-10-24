@@ -8,9 +8,15 @@ an issue first so we can agree the shape before you build it.
 ```sh
 bun install
 bun test             # unit, component and architecture tests (happy-dom, no browser needed)
-bun run typecheck    # the package and the examples
+bun run typecheck    # the package, the examples and the stories
 bun run examples     # every example at http://localhost:3070
+bun run ladle        # the playground at http://localhost:61080
 ```
+
+The Ladle playground (`stories/Playground.stories.tsx`) puts every prop on one page behind
+controls. The `data…` controls rebuild the scene; every other control is a live prop change, so it
+is also the place to check that a change re-tints or restyles in place without a remount. It is
+development only: nothing in `stories/` or `.ladle/` is published.
 
 Bun 1.3 or later is needed to develop the package; consumers need only npm and Node 20+.
 

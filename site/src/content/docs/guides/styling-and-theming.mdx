@@ -22,11 +22,23 @@ new object and the canvas re-tints in place, with no new scene.
 
 ## Ramp
 
-An item with a `ramp` position from 0 to 1 is coloured along the **ramp**, a sweep of hue from
-`fromHue` to `toHue` at a fixed `saturation` and `lightness` (`DEFAULT_RAMP` by default). Use it for
-something ordered: age, size, a score the viewer can read elsewhere. An item without one gets a
-stable colour of its own, so a missing value never looks like an average one. The ramp is read
-once, when the explorer mounts; the demo remounts it with a `key` to switch.
+An item with a `ramp` position from 0 to 1 is coloured along the **ramp** (`DEFAULT_RAMP` by
+default). Use it for something ordered: age, size, a score the viewer can read elsewhere. An item
+without one gets a stable colour of its own, so a missing value never looks like an average one.
+
+A ramp is a list of colour `stops`, each a `0xRRGGBB` number or a CSS string, spread evenly from 0
+to 1 like a CSS gradient's. Two stops make a two-tone scale, three a diverging one. Place a stop
+with `{ color, at }`, and two stops at the same `at` make a hard edge between bands.
+`interpolation` picks how the colours between stops are blended:
+
+- `oklab` (the default) keeps the steps perceptually even, with no muddy middle.
+- `srgb` is a plain channel mix, which is what a CSS gradient does unless told otherwise.
+- `hsl` turns the hue the shorter way round between each pair of stops, for a sweep round the
+  colour wheel. `DEFAULT_RAMP` is one: red through magenta, blue and cyan to green.
+
+The ramp is compared by value, so an inline object is fine. Pass a different one and the canvas
+re-tints in place, like a palette. The demo switches between a two-tone, a diverging and a banded
+ramp.
 
 <Demo code={ThemingSource} file="theming.tsx">
   <Theming client:only="react" />

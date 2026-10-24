@@ -60,7 +60,11 @@
     "check:bundle": "bun run examples/check-bundle.ts",
     "check:size": "bun run scripts/check-size.ts",
     "check:consumer": "bun run scripts/check-consumer.ts",
-    "examples": "bun run examples/server.ts"
+    "check:docs": "bun run scripts/check-docs.ts",
+    "check": "bun run typecheck && bun test && bun run build && bun run check:size && bun run lint:package && bun run check:bundle && bun run check:bundle --built && bun run check:docs",
+    "examples": "bun run examples/server.ts",
+    "ladle": "ladle serve",
+    "ladle:build": "ladle build"
   },
   "peerDependencies": {
     "pixi.js": "^8.13.2",
@@ -69,6 +73,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@happy-dom/global-registrator": "^20.11.2",
+    "@ladle/react": "5.1.1",
     "@microsoft/api-extractor": "^7.59.4",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.0.0",
