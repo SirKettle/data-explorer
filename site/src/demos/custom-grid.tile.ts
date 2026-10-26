@@ -1,6 +1,6 @@
 // Import this module only through the dynamic import in custom-grid.tsx, so it stays out of the
 // page's first load. It imports PixiJS only as types: its classes come from `draw(kit)`.
-import { defineGridTile } from "@thirkettle/data-explorer/pixi";
+import { defineGridTile } from "@data-xplorer/core/pixi";
 
 // One baseplate stud, drawn in white and greys: the grid's `color` tints it, its `alpha` fades it.
 export default defineGridTile({

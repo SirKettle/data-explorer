@@ -1,9 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "last-release-sha": "e1758bec3e3efdc24c48a4c1f8905d2578534114",
   "packages": {
-    ".": {
+    "packages/core": {
       "release-type": "node",
-      "package-name": "@thirkettle/data-explorer",
+      "package-name": "@data-xplorer/core",
+      "component": "core",
       "changelog-path": "CHANGELOG.md",
       "bump-minor-pre-major": true
     }

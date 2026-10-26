@@ -3,17 +3,29 @@
 Thank you for helping. Issues and pull requests are welcome; for anything larger than a fix, open
 an issue first so we can agree the shape before you build it.
 
+## The repository
+
+A Bun workspace. `bun install` at the root installs every workspace.
+
+- `packages/core`: `@data-xplorer/core`, the published package, with its examples and playground.
+- `apps/world`: the world map, a private app built on the package (see its README).
+- `site`: the documentation site, installed on its own (`bun install --cwd site`).
+
+`bun run check` at the root runs everything CI runs: each workspace's own `check`, then the docs
+site's demos (type-checked and tested) and `check:docs`.
+
 ## The loop
 
+In `packages/core`:
+
 ```sh
-bun install
 bun test             # unit, component and architecture tests (happy-dom, no browser needed)
 bun run typecheck    # the package, the examples and the stories
 bun run examples     # every example at http://localhost:3070
 bun run ladle        # the playground at http://localhost:61080
 ```
 
-The Ladle playground (`stories/Playground.stories.tsx`) puts every prop on one page behind
+The Ladle playground (`packages/core/stories/Playground.stories.tsx`) puts every prop on one page behind
 controls. The `data…` controls rebuild the scene; every other control is a live prop change, so it
 is also the place to check that a change re-tints or restyles in place without a remount. It is
 development only: nothing in `stories/` or `.ladle/` is published.
@@ -23,8 +35,8 @@ Bun 1.3 or later is needed to develop the package; consumers need only npm and N
 ### Working on the package inside an app
 
 ```sh
-bun run build && bun link                  # here: register the package
-bun link @thirkettle/data-explorer         # in the app
+bun run build && bun link     # in packages/core: register the package
+bun link @data-xplorer/core   # in the app
 ```
 
 Rebuild here after each change (`bun run build`), and the app picks it up. The app imports `dist/`,
@@ -32,14 +44,14 @@ exactly as it would from npm.
 
 ## Rules the tests enforce
 
-`src/architecture.test.ts` keeps the boundary: no consumer imports or consumer vocabulary, `pixi.js`
+`packages/core/src/architecture.test.ts` keeps the boundary: no consumer imports or consumer vocabulary, `pixi.js`
 only in the renderer files it lists, `./pixi` types-only, and the renderer reached only through one
 dynamic import. If a test there fails, the design has moved: talk about it in the pull request
 rather than loosening the rule quietly.
 
 ## Changing the public API
 
-The API reports in `api/` are the public contract. If your change alters what consumers can import
+The API reports in `packages/core/api/` are the public contract. If your change alters what consumers can import
 or call, run `bun run api:report` and commit the updated report with it; `bun run build` (and CI)
 fails if they differ. Every public member needs a doc comment.
 

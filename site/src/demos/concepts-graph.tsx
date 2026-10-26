@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer, type ExplorerEdge } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer, type ExplorerEdge } from "@data-xplorer/core";
 
 // A tiny organisation: teams of people, and who works with whom. The focus says where you are:
 // the top (null), a team, or one person's neighbourhood.

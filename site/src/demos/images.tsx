@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer } from "@data-xplorer/core";
 
 // An image the canvas may draw: same origin, a data: URL, or a host that sends CORS headers.
 const face = (hue: number) =>

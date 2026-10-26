@@ -1,4 +1,4 @@
-import { createSceneSource, DataExplorer } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer } from "@data-xplorer/core";
 
 const source = createSceneSource<null>({
   load: () => ({

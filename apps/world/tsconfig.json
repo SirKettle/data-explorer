@@ -1,0 +1,5 @@
+{
+  // Imports @data-xplorer/core by name; the root config resolves it to the package's source.
+  "extends": "../../tsconfig.json",
+  "include": ["src", "stories", "server.ts"]
+}

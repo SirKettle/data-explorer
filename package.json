@@ -1,94 +1,22 @@
 {
-  "name": "@thirkettle/data-explorer",
-  "version": "0.6.0",
-  "description": "A continuous zoomable explorer for any tree- or graph-shaped data, drawn with PixiJS behind an accessible outline.",
-  "license": "MIT",
-  "author": "Will Thirkettle",
+  "name": "data-xplorer",
+  "private": true,
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/SirKettle/data-explorer.git"
-  },
-  "homepage": "https://github.com/SirKettle/data-explorer#readme",
-  "bugs": {
-    "url": "https://github.com/SirKettle/data-explorer/issues"
-  },
-  "keywords": [
-    "react",
-    "pixi",
-    "pixijs",
-    "zoomable",
-    "explorer",
-    "graph",
-    "tree",
-    "visualisation",
-    "accessible"
+  "workspaces": [
+    "packages/*",
+    "apps/*"
   ],
-  "sideEffects": [
-    "./src/**"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./headless": {
-      "types": "./dist/headless.d.ts",
-      "import": "./dist/headless.js"
-    },
-    "./pixi": {
-      "types": "./dist/pixi.d.ts",
-      "import": "./dist/pixi.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
-  ],
-  "engines": {
-    "node": ">=20"
-  },
   "scripts": {
-    "build": "bun run scripts/build.ts",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p examples && tsc --noEmit -p site/src/demos",
-    "api:report": "tsc -p tsconfig.api.json && api-extractor run --local -c api-extractor.index.json && api-extractor run --local -c api-extractor.headless.json && api-extractor run --local -c api-extractor.pixi.json",
-    "lint:package": "publint && attw --pack . --profile esm-only",
-    "check:bundle": "bun run examples/check-bundle.ts",
-    "check:size": "bun run scripts/check-size.ts",
-    "check:consumer": "bun run scripts/check-consumer.ts",
+    "typecheck": "tsc --noEmit -p site/src/demos",
+    "test": "bun test site/src/demos",
     "check:docs": "bun run scripts/check-docs.ts",
-    "check": "bun run typecheck && bun test && bun run build && bun run check:size && bun run lint:package && bun run check:bundle && bun run check:bundle --built && bun run check:docs",
-    "examples": "bun run examples/server.ts",
-    "ladle": "ladle serve",
-    "ladle:build": "ladle build"
-  },
-  "peerDependencies": {
-    "pixi.js": "^8.13.2",
-    "react": "^18.0.0 || ^19.0.0"
+    "check": "bun run --cwd packages/core check && bun run --cwd apps/world check && bun run typecheck && bun run test && bun run check:docs"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.5",
-    "@happy-dom/global-registrator": "^20.11.2",
-    "@ladle/react": "5.1.1",
-    "@microsoft/api-extractor": "^7.59.4",
-    "@testing-library/react": "^16.3.2",
-    "@types/d3-geo": "^3.1.1",
     "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@types/topojson-client": "^3.1.5",
-    "@types/topojson-specification": "^1.0.5",
     "bun-types": "^1.3.14",
-    "d3-geo": "^3.1.1",
     "pixi.js": "^8.13.2",
-    "publint": "0.3.25",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "topojson-client": "^3.1.0",
-    "typescript": "^5.9.3",
-    "world-atlas": "^2.0.2"
+    "typescript": "^5.9.3"
   }
 }

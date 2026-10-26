@@ -1,7 +1,7 @@
 name: Docs
 
 # The documentation site (site/): built and link-checked on every pull request, and deployed to
-# GitHub Pages from main. Its demos import the package from src/, so the site always documents
+# GitHub Pages from main. Its demos import the package from packages/core/src/, so the site always documents
 # the code in the same commit.
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
       - run: bun install --frozen-lockfile --cwd site
       # Every page shows code only through a demo that runs it.
       - run: bun run scripts/check-docs.ts
-      # Builds the examples for the gallery, the API reference, and every page; fails on a broken
+      # Builds the examples and apps for the gallery, the API reference, and every page; fails on a broken
       # internal link (starlight-links-validator).
       - run: bun run --cwd site build
       - uses: actions/upload-pages-artifact@v3

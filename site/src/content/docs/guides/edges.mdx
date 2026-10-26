@@ -9,7 +9,7 @@ import Demo from "../../../components/Demo.astro";
 import Edges from "../../../demos/edges.tsx";
 import EdgesSource from "../../../demos/edges.tsx?raw";
 
-A scene's `edges` always shape a radial scene's [layout](/data-explorer/concepts/#packed-radial-and-fixed-scenes).
+A scene's `edges` always shape a radial scene's [layout](/data-xplorer/concepts/#packed-radial-and-fixed-scenes).
 With `edges={{ visible: true }}` they are also **drawn**, in packed and radial scenes alike: under
 the items, fading with them through every transition, and culled off screen. An edge naming an item
 that is not in the scene is skipped.
@@ -36,4 +36,4 @@ be seen can also be followed from the keyboard and by a screen reader.
 
 **Cap.** A scene draws at most `edges.max` edges (default 500). Over it, edges to the scene's
 `focusId` come first, then the rest in order, and the outline says how many are shown. Dashes are
-the expensive style: see [Performance](/data-explorer/guides/performance/).
+the expensive style: see [Performance](/data-xplorer/guides/performance/).

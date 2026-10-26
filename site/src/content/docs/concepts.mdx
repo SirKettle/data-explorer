@@ -80,7 +80,7 @@ A scene is laid out one of three ways:
   in a graph is shown.
 - **Fixed**: every item at the rectangle you give it, for data with places of its own, such as a
   map. Set `layout: "fixed"` and give each item a `box`: see
-  [Fixed layouts and regions](/data-explorer/guides/fixed-layouts/).
+  [Fixed layouts and regions](/data-xplorer/guides/fixed-layouts/).
 
 A scene is radial when it sets **`focusId`** to the id of the item to put in the middle. In a
 radial scene:
@@ -95,7 +95,7 @@ radial scene:
   `targetId`. Edges between two neighbours are drawn (with edges on) but do not affect the layout.
 
 Edges in a packed scene do not affect the layout either, but can be
-[drawn](/data-explorer/guides/edges/). A neighbour can drill into its own radial scene, which is
+[drawn](/data-xplorer/guides/edges/). A neighbour can drill into its own radial scene, which is
 how a viewer walks a graph.
 
 ## Loading, caching and change
@@ -112,7 +112,7 @@ it is retried. Its extras:
   explorer showing the source reloads its scene in place.
 
 If your data already lives in a cache of its own (a query library, say), implement the
-[`SceneSource`](/data-explorer/reference/main/interfaces/scenesource/) interface directly instead.
+[`SceneSource`](/data-xplorer/reference/main/interfaces/scenesource/) interface directly instead.
 
 ## The accessible outline
 
@@ -120,7 +120,7 @@ The canvas is hidden from assistive technology. Beside it, the explorer renders 
 current scene as real links (each item's `href`) and buttons, visually hidden but read aloud and
 reachable by keyboard. Enter on an entry enters that item. That is why every node needs an `href`:
 anything the canvas shows must also be reachable as an ordinary link. If your data has no pages of
-its own, use stable in-app URLs. [Accessibility](/data-explorer/guides/accessibility/) shows it.
+its own, use stable in-app URLs. [Accessibility](/data-xplorer/guides/accessibility/) shows it.
 
 ## All of it together
 

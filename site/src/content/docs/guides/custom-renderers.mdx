@@ -31,7 +31,7 @@ The module it loads. It builds its views from the classes `create(kit)` is hande
   app's page entry (it built, then rendered blank). Other bundlers may cope; the kit makes it a
   non-question.
 - **The frame** gives `size` (world units: draw centred on 0, 0), `width` and `height` (the item's
-  box, which in a [fixed scene](/data-explorer/guides/fixed-layouts/) need not be square; `size` is
+  box, which in a [fixed scene](/data-xplorer/guides/fixed-layouts/) need not be square; `size` is
   the largest circle that fits it), `screenSize` (pixels, for level of detail), `opacity`, `hovered`, `selected`, `timeMs`, `tint` (the colour the item would have
   had), `texture` (the item's own image, once ready) and `reducedMotion`. The second argument is the
   laid-out item; its `item` field is your item as you wrote it.
@@ -46,5 +46,5 @@ The module it loads. It builds its views from the classes `create(kit)` is hande
   mistakes are not, so a broken polygon can still spoil the frame.
 - **Cap.** At most `customViews.max` items (200 by default) are drawn by renderers at once; past it,
   those furthest from the middle of the view draw their shape.
-- **`@thirkettle/data-explorer/pixi`** holds only the contract's types and `defineRenderers`. Import
+- **`@data-xplorer/core/pixi`** holds only the contract's types and `defineRenderers`. Import
   it only from your renderers module, so it and PixiJS stay out of your page's first load.

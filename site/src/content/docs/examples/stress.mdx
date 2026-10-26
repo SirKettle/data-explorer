@@ -6,13 +6,13 @@ sidebar:
 ---
 
 import ExampleFrame from "../../../components/ExampleFrame.astro";
-import f_main_tsx from "../../../../../examples/stress/main.tsx?raw";
-import f_renderers_ts from "../../../../../examples/stress/renderers.ts?raw";
+import f_main_tsx from "../../../../../packages/core/examples/stress/main.tsx?raw";
+import f_renderers_ts from "../../../../../packages/core/examples/stress/renderers.ts?raw";
 
 One big scene, its size and styles in the query string, for reading draw cost off the stats overlay. On its own page, set `nodes`, `edges`, `curve`, `max`, and `dash=1`, `arrow=1`, `textures=1` or `custom=1` in the query string: for example `?stats=1&nodes=1000&edges=2000&dash=1`.
 
 The frame below runs the example built from exactly these files. Start with `main.tsx`. Every
-example shares one small page shell (`examples/shared/ExampleShell.tsx`): it keeps the focus in the
+example shares one small page shell (`packages/core/examples/shared/ExampleShell.tsx`): it keeps the focus in the
 URL hash, builds a breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
 
 <ExampleFrame name="stress" query="stats=1" files={{ "main.tsx": f_main_tsx, "renderers.ts": f_renderers_ts }} />

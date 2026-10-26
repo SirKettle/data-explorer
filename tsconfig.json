@@ -1,4 +1,5 @@
 {
+  // Shared by every workspace (packages/*, apps/*) and the docs site's demos, which extend it.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -11,12 +12,13 @@
     "resolveJsonModule": true,
     "noEmit": true,
     "types": ["bun-types"],
-    // The package imports itself by its published name in scripts/consumer; resolve that to source.
+    // The packages by their published names, resolved to their source: an app or a demo always
+    // runs the code in this commit, with no build in between.
     "paths": {
-      "@thirkettle/data-explorer": ["./src/index.ts"],
-      "@thirkettle/data-explorer/headless": ["./src/headless.ts"],
-      "@thirkettle/data-explorer/pixi": ["./src/pixi.ts"]
+      "@data-xplorer/core": ["./packages/core/src/index.ts"],
+      "@data-xplorer/core/headless": ["./packages/core/src/headless.ts"],
+      "@data-xplorer/core/pixi": ["./packages/core/src/pixi.ts"]
     }
   },
-  "include": ["src", "test", "scripts", "stories"]
+  "include": ["scripts"]
 }

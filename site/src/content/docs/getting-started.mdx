@@ -9,14 +9,14 @@ import Demo from "../../components/Demo.astro";
 import FirstRender from "../../demos/first-render.tsx";
 import firstRender from "../../demos/first-render.tsx?raw";
 
-`@thirkettle/data-explorer` draws tree- and graph-shaped data as a space you zoom through. This page
-goes from install to a working explorer. [Concepts](/data-explorer/concepts/) explains the ideas
+`@data-xplorer/core` draws tree- and graph-shaped data as a space you zoom through. This page
+goes from install to a working explorer. [Concepts](/data-xplorer/concepts/) explains the ideas
 behind it.
 
 ## Install
 
 ```sh
-npm install @thirkettle/data-explorer pixi.js react react-dom
+npm install @data-xplorer/core pixi.js react react-dom
 ```
 
 `react` (18 or 19) and `pixi.js` (8.13.2 or later 8.x) are peer dependencies: your app provides
@@ -49,8 +49,8 @@ height, it takes 480 px. Give its container, or `.data-explorer__surface`, a hei
 
 ## Next
 
-- [Concepts](/data-explorer/concepts/): focus, scenes, packed, radial and fixed layouts, drilling and
+- [Concepts](/data-xplorer/concepts/): focus, scenes, packed, radial and fixed layouts, drilling and
   zooming out, loading, and the accessible outline.
-- [Events](/data-explorer/guides/events/): selection, hover, activation, and getting your own data
+- [Events](/data-xplorer/guides/events/): selection, hover, activation, and getting your own data
   back.
-- [Styling and theming](/data-explorer/guides/styling-and-theming/): colours, ramps and sizing.
+- [Styling and theming](/data-xplorer/guides/styling-and-theming/): colours, ramps and sizing.

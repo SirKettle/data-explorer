@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer, type ExplorerEffects, type ExplorerNode } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer, type ExplorerEffects, type ExplorerNode } from "@data-xplorer/core";
 
 // Services in a status board. Items ask for effects; the view's `effects` switch them globally.
 const services: [string, Partial<ExplorerNode<null>>][] = [

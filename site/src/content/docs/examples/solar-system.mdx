@@ -6,16 +6,16 @@ sidebar:
 ---
 
 import ExampleFrame from "../../../components/ExampleFrame.astro";
-import f_source_ts from "../../../../../examples/solar-system/source.ts?raw";
-import f_main_tsx from "../../../../../examples/solar-system/main.tsx?raw";
-import f_planet_renderers_ts from "../../../../../examples/solar-system/planet-renderers.ts?raw";
-import f_data_ts from "../../../../../examples/solar-system/data.ts?raw";
-import f_textures_index_ts from "../../../../../examples/solar-system/textures/index.ts?raw";
+import f_source_ts from "../../../../../packages/core/examples/solar-system/source.ts?raw";
+import f_main_tsx from "../../../../../packages/core/examples/solar-system/main.tsx?raw";
+import f_planet_renderers_ts from "../../../../../packages/core/examples/solar-system/planet-renderers.ts?raw";
+import f_data_ts from "../../../../../packages/core/examples/solar-system/data.ts?raw";
+import f_textures_index_ts from "../../../../../packages/core/examples/solar-system/textures/index.ts?raw";
 
-Item `texture`s cropped to their disc, custom renderers by item `kind` (planets with a night side and rings), `edges` as orbits, a `pulse` on the Sun and an image `background`. Pluto's face is on a host that sends no CORS header, so it keeps its plain disc and `onTextureError` reports it: see [Images and CORS](/data-explorer/guides/images-and-cors/).
+Item `texture`s cropped to their disc, custom renderers by item `kind` (planets with a night side and rings), `edges` as orbits, a `pulse` on the Sun and an image `background`. Pluto's face is on a host that sends no CORS header, so it keeps its plain disc and `onTextureError` reports it: see [Images and CORS](/data-xplorer/guides/images-and-cors/).
 
 The frame below runs the example built from exactly these files. Start with `source.ts`. Every
-example shares one small page shell (`examples/shared/ExampleShell.tsx`): it keeps the focus in the
+example shares one small page shell (`packages/core/examples/shared/ExampleShell.tsx`): it keeps the focus in the
 URL hash, builds a breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
 
 <ExampleFrame name="solar-system" files={{ "source.ts": f_source_ts, "main.tsx": f_main_tsx, "planet-renderers.ts": f_planet_renderers_ts, "data.ts": f_data_ts, "textures/index.ts": f_textures_index_ts }} />

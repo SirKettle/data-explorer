@@ -19,6 +19,6 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: "@thirkettle/data-explorer, react, pixi.js, and the browser."
+      description: "@data-xplorer/core, react, pixi.js, and the browser."
     validations:
       required: true

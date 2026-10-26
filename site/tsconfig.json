@@ -6,9 +6,9 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "paths": {
-      "@thirkettle/data-explorer": ["../src/index.ts"],
-      "@thirkettle/data-explorer/headless": ["../src/headless.ts"],
-      "@thirkettle/data-explorer/pixi": ["../src/pixi.ts"]
+      "@data-xplorer/core": ["../packages/core/src/index.ts"],
+      "@data-xplorer/core/headless": ["../packages/core/src/headless.ts"],
+      "@data-xplorer/core/pixi": ["../packages/core/src/pixi.ts"]
     }
   }
 }
