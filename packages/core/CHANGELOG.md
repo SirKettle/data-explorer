@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0](https://github.com/SirKettle/data-xplorer/compare/core-v0.6.0...core-v0.7.0) (2026-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* the package is now @data-xplorer/core. Uninstall @thirkettle/data-explorer, install @data-xplorer/core, and change imports from "@thirkettle/data-explorer", "/headless" and "/pixi" to "@data-xplorer/core", "@data-xplorer/core/headless" and "@data-xplorer/core/pixi". Nothing else changes.
+
+### Features
+
+* move to the [@data-xplorer](https://github.com/data-xplorer) org as a monorepo ([1a52fcd](https://github.com/SirKettle/data-xplorer/commit/1a52fcdfa4ba7422cd1d375ea8f1da8ecad971e5))
+
 ## [0.6.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.5.0...data-explorer-v0.6.0) (2026-10-26)
 
 
