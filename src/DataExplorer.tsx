@@ -579,6 +579,15 @@ export function DataExplorer<F, D = unknown>({
           onDoubleTap: (point) => {
             const node = renderer.hitTest(rig.camera, point);
             if (node && activationCancelled(node, "pointer")) return;
+            // A child drawn in its parent's place: enter the parent where it is, then the child if
+            // it has a scene of its own; otherwise zoom in on it, as for any other item.
+            const parent = node ? renderer.previewParentOf(node) : null;
+            if (node && parent) {
+              void stack.enterThrough(parent, node.id).then((entered) => {
+                if (!entered) rig.zoomAtScreen(point, 2.5);
+              });
+              return;
+            }
             if (node?.drillable && stack.nodeById(node.id)) {
               void stack.enter(node.id);
               return;

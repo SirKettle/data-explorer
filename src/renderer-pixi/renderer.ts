@@ -24,7 +24,7 @@
 
 import { clampPresence, easePresence, MAX_PRESENCE_FRAME_MS, presenceLook, type ExplorerPresence } from "../presence";
 import { Application, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture, TilingSprite } from "pixi.js";
-import type { RenderEdge, RenderNode, TransitionView } from "../camera/scene-stack";
+import type { PreviewParent, RenderEdge, RenderNode, TransitionView } from "../camera/scene-stack";
 import { createEdgeDrawer, type EdgeLayer } from "./edges";
 import { createTextureStore, CROP_SIZE } from "./textures";
 import { createCustomViews, itemZ, PIXI_KIT } from "./custom";
@@ -447,7 +447,13 @@ export async function createRenderer(
   // the scene's own nodes is under the pointer.
   let around: RenderNode[] = [];
   let aroundById = new Map<string, RenderNode>();
-  const findNode = (id: string) => nodesById.get(id) ?? aroundById.get(id);
+  /** Items of the current scene the pointer passes through, to their children (`within`). */
+  let passThrough: ReadonlySet<string> = new Set();
+  /** Children drawn in their parent's place that can be pointed at, each with that parent. */
+  let within: RenderNode[] = [];
+  let withinParent = new Map<RenderNode, PreviewParent>();
+  let withinById = new Map<string, RenderNode>();
+  const findNode = (id: string) => nodesById.get(id) ?? aroundById.get(id) ?? withinById.get(id);
   let selectedId: string | null = null;
   let hoveredId: string | null = null;
 
@@ -998,6 +1004,18 @@ export async function createRenderer(
     // its children in its place is still there to point at.
     around = over?.pointable ? over.nodes.filter((node) => over.pointable!(node)) : [];
     aroundById = new Map(around.map((node) => [node.id, node]));
+    passThrough = transition?.passThrough ?? new Set();
+    within = [];
+    withinParent = new Map();
+    for (const layer of transition?.under ?? []) {
+      if (!layer.pointable || !layer.via) continue;
+      for (const node of layer.nodes) {
+        if (!layer.pointable(node)) continue;
+        within.push(node);
+        withinParent.set(node, layer.via);
+      }
+    }
+    withinById = new Map(within.map((node) => [node.id, node]));
 
     for (let i = spriteIndex; i < spritePool.length; i++) spritePool[i]!.visible = false;
     for (let i = regionIndex; i < regionPool.length; i++) regionPool[i]!.visible = false;
@@ -1183,8 +1201,16 @@ export async function createRenderer(
     ring.scale.set(((stretched ? node.width : side) * scale) / DISC_TEXTURE_SIZE, ((stretched ? node.height : side) * scale) / DISC_TEXTURE_SIZE);
   }
 
+  /** What is under `point`, as drawn on top: an item of the current scene, unless it has handed
+   *  over to its children (`passThrough`), then those children, then the scene drawn around. */
   function hitTest(camera: Camera, point: ScreenPoint, minRadiusPx = 22): RenderNode | null {
-    return nearestUnder(nodes, camera, point, minRadiusPx) ?? nearestUnder(around, camera, point, minRadiusPx);
+    const own = passThrough.size > 0 ? nodes.filter((node) => !passThrough.has(node.id)) : nodes;
+    return nearestUnder(own, camera, point, minRadiusPx) ?? nearestUnder(within, camera, point, minRadiusPx) ?? nearestUnder(around, camera, point, minRadiusPx);
+  }
+
+  /** For a node `hitTest` found among children drawn in their parent's place, that parent. */
+  function previewParentOf(node: RenderNode): PreviewParent | null {
+    return withinParent.get(node) ?? null;
   }
 
   function nearestUnder(candidates: readonly RenderNode[], camera: Camera, point: ScreenPoint, minRadiusPx: number): RenderNode | null {
@@ -1236,6 +1262,7 @@ export async function createRenderer(
       customViews.setModule(module);
     },
     hitTest,
+    previewParentOf,
     setPalette,
     /** The colour ramp, applied live like the palette: items re-tint on the next draw, which the
      *  caller schedules. */

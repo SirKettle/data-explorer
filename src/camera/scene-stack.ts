@@ -155,8 +155,19 @@ export interface TransitionLayer {
   /** Which of the layer's nodes can be hovered, selected and double-clicked — absent means none.
    *  It decides visibility too: the renderer points at exactly these, however faint. */
   pointable?: (node: RenderNode) => boolean;
+  /** For a layer of an item's children: that item, which is entered (or, when `around`, moved
+   *  into sideways) to reach them. See `SceneStack.enterThrough`. */
+  via?: PreviewParent;
   /** US071 — the layer's scene's edges, drawn at the lower alpha of their two ends. */
   edges?: readonly RenderEdge[];
+}
+
+/** The item whose children a preview layer draws, and how it is reached from the current scene. */
+export interface PreviewParent {
+  /** Its id: an item of the current scene, or (`around`) of the scene drawn around it. */
+  id: string;
+  /** Whether it is a sibling drawn around the current scene rather than one of its own items. */
+  around: boolean;
 }
 
 /**
@@ -169,6 +180,9 @@ export interface TransitionView {
   under: TransitionLayer[];
   /** An opacity multiplier for the current scene's own nodes — `null` means "all 1". */
   currentAlpha: ((node: RenderNode) => number) | null;
+  /** Solid items of the current scene whose children now show more than they do: the pointer
+   *  passes through them to the children (`under`, pointable). */
+  passThrough: ReadonlySet<string>;
   /** The parent scene just left, drawn *over* the current scene: the node entered dissolving as a
    *  haze, its siblings exactly as they were drawn before entry. */
   over: TransitionLayer | null;
@@ -887,6 +901,19 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     await enter(id, opts);
   }
 
+  /** Enters `id`, an item drawn as one of `parent`'s children in its place: `parent` first, where
+   *  it is (nothing moves, the children already being where they will be), then the item itself,
+   *  when it can be entered. Resolves to whether the item itself was entered. */
+  async function enterThrough(parent: PreviewParent, id: string): Promise<boolean> {
+    if (animating || transitioning) return false;
+    if (parent.around) await enterSibling(parent.id, { approach: false });
+    else await enter(parent.id, { approach: false });
+    const node = current.renderNodes.find((n) => n.id === id);
+    if (!node?.drillable) return false;
+    await enter(id);
+    return current.key === keyOf(focusOf(node));
+  }
+
   /**
    * D1.2/D1.3, widened — starts loading the children of every visible drillable node past the
    * prefetch threshold, biggest on screen first, at most `MAX_PREVIEW_LOADS` uncached at once.
@@ -1012,6 +1039,7 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     const under: TransitionLayer[] = [];
     let over: TransitionLayer | null = null;
     let arriving = false;
+    const passThrough = new Set<string>();
 
     // Every node with a loaded preview thins by its own size, on screen or not — the same rule the
     // ghost applies to the parent's nodes after entry, so the two agree for every node, not just
@@ -1026,7 +1054,17 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
       if (reveal.arrival < 1) arriving = true;
       if (reveal.cloud < 1) cloudById.set(node.id, reveal.cloud);
       if (onScreen.has(node.id) && reveal.visible > 0.002) {
-        under.push({ nodes: previewNodesFor(node, entry.scene), edges: entry.scene.renderEdges, alpha: () => reveal.visible, decorated: true });
+        // Once a solid item's children show more than it does, they are what the pointer finds. (A
+        // cloud stays the target however far it thins: it is a haze the children show through.)
+        const handedOver = isSolid(node) && reveal.visible > reveal.cloud;
+        if (handedOver) passThrough.add(node.id);
+        under.push({
+          nodes: previewNodesFor(node, entry.scene),
+          edges: entry.scene.renderEdges,
+          alpha: () => reveal.visible,
+          decorated: true,
+          ...(handedOver ? { pointable: () => true, via: { id: node.id, around: false } } : {}),
+        });
       }
     }
     let currentAlpha: ((node: RenderNode) => number) | null = cloudById.size > 0 ? (n) => cloudById.get(n.id) ?? 1 : null;
@@ -1043,35 +1081,41 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
 
       const ghost = ghostNodesFor(frame);
       const ghostAlpha = new Map<string, number>([[frame.anchorId, cloudAlpha(fill, visible, frame.anchorSolid) * arrival]]);
-      // Siblings whose children are showing in their place: a solid sibling washes out completely
-      // as they appear, but it is still what the viewer is looking at.
-      const revealing = new Set<string>();
+      // Solid siblings whose children now show more than they do: the pointer finds the children.
+      const handedOver = new Set<string>();
       for (const [key, entry] of frame.holder.previews) {
         const sibling = ghost.byFocusKey.get(key);
         if (!sibling || sibling.id === frame.anchorId) continue;
         const reveal = revealFor(sibling, fillOf(sibling), entry, now);
         ghostAlpha.set(sibling.id, reveal.cloud * arrival);
         if (isOnScreen(sibling) && reveal.visible > 0.002) {
-          under.push({ nodes: ghostPreviewNodesFor(frame, sibling, entry.scene), edges: entry.scene.renderEdges, alpha: () => reveal.visible * arrival, decorated: true });
-          revealing.add(sibling.id);
+          const children = isSolid(sibling) && reveal.visible > reveal.cloud;
+          if (children) handedOver.add(sibling.id);
+          under.push({
+            nodes: ghostPreviewNodesFor(frame, sibling, entry.scene),
+            edges: entry.scene.renderEdges,
+            alpha: () => reveal.visible * arrival,
+            decorated: true,
+            ...(children ? { pointable: () => true, via: { id: sibling.id, around: true } } : {}),
+          });
         }
       }
-      // Every sibling on show can be pointed at — itself, or its children in its place, however far
-      // it has thinned to reveal them — but never the dissolving cloud of the scene you're in, which
-      // covers everything inside it.
+      // Every sibling on show can be pointed at, unless it is solid and its children show more than
+      // it does (then they are pointed at instead), but never the dissolving cloud of the scene
+      // you're in, which covers everything inside it.
       const ghostAlphaOf = (n: RenderNode) => ghostAlpha.get(n.id) ?? arrival;
       over = {
         nodes: ghost.nodes,
         edges: frame.scene.renderEdges,
         alpha: ghostAlphaOf,
         decorated: true,
-        pointable: (n) => n.id !== frame.anchorId && (ghostAlphaOf(n) > MIN_POINTABLE_ALPHA || revealing.has(n.id)),
+        pointable: (n) => n.id !== frame.anchorId && !handedOver.has(n.id) && ghostAlphaOf(n) > MIN_POINTABLE_ALPHA,
       };
       const inner = currentAlpha;
       currentAlpha = inner ? (n) => childVisible * inner(n) : () => childVisible;
     }
 
-    return { under, currentAlpha, over, animating: arriving };
+    return { under, currentAlpha, passThrough, over, animating: arriving };
   }
 
   function breadcrumb(): { key: string; heading: string }[] {
@@ -1095,6 +1139,7 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     schedulePreviews,
     maybeMoveAcross,
     enterSibling,
+    enterThrough,
     ghostSibling,
     transitionView,
     breadcrumb,

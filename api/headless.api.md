@@ -48,6 +48,7 @@ export function createSceneStack<F>(input: SceneStackDeps<F>): {
     enterSibling: (id: string, opts?: {
         approach?: boolean;
     }) => Promise<void>;
+    enterThrough: (parent: PreviewParent, id: string) => Promise<boolean>;
     ghostSibling: (id: string) => RenderNode | null;
     transitionView: (now?: number) => TransitionView;
     breadcrumb: () => {
@@ -602,6 +603,7 @@ export interface TransitionLayer {
     edges?: readonly RenderEdge[];
     nodes: readonly RenderNode[];
     pointable?: (node: RenderNode) => boolean;
+    via?: PreviewParent;
 }
 
 // @public
@@ -609,6 +611,7 @@ export interface TransitionView {
     animating: boolean;
     currentAlpha: ((node: RenderNode) => number) | null;
     over: TransitionLayer | null;
+    passThrough: ReadonlySet<string>;
     under: TransitionLayer[];
 }
 
@@ -623,5 +626,9 @@ export function windowed<T>(items: readonly T[], limit: number): {
     shown: T[];
     truncated: ExplorerTruncation | null;
 };
+
+// Warnings were encountered during analysis:
+//
+// temp/dts/camera/scene-stack.d.ts:200:5 - (ae-forgotten-export) The symbol "PreviewParent" needs to be exported by the entry point headless.d.ts
 
 ```

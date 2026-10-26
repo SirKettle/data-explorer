@@ -544,27 +544,56 @@ describe("fixed scenes", () => {
     expect(stack.transitionView(Infinity).under[0]!.nodes.find((n) => n.id === "q")).toMatchObject({ outline: null, labelAt: null });
   });
 
-  test("a solid neighbour washed out to show its own children in its place can still be pointed at", async () => {
+  /** Both regions' children loaded at the top, then `east` entered, with `west` showing its own
+   *  children in its place round it. */
+  async function insideEast() {
     const scenes = world();
     const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
     const s = stack.current.layout.width / 800;
-    // Both regions big enough to load their children: they reveal them in their place.
     rig.set({ x: 400 * s, y: 100 * s, scale: 0.75 });
     stack.schedulePreviews();
     await flush();
     rig.set({ x: 200 * s, y: 100 * s, scale: 1.4 });
-    await stack.enter("east", { approach: false });
+    return { rig, stack, s };
+  }
 
+  test("a solid item showing its children in its place hands the pointer to them", async () => {
+    const { stack } = await insideEast();
+    // Still at the top: both regions have washed out to show their places.
+    const view = stack.transitionView(Infinity);
+    expect([...view.passThrough].sort()).toEqual(["east", "west"]);
+    const layer = view.under.find((l) => l.nodes.some((n) => n.id === "p"))!;
+    expect(layer.via).toEqual({ id: "east", around: false });
+    expect(layer.pointable!(layer.nodes.find((n) => n.id === "p")!)).toBe(true);
+  });
+
+  test("so does a solid neighbour drawn round the scene you are in", async () => {
+    const { stack } = await insideEast();
+    await stack.enter("east", { approach: false });
     const view = stack.transitionView(Infinity);
     const over = view.over!;
     const west = over.nodes.find((n) => n.id === "west")!;
-    // West itself has washed out completely: its children are what shows.
     expect(over.alpha(west)).toBeLessThan(0.01);
-    expect(view.under.some((layer) => layer.nodes.some((n) => n.id === "r"))).toBe(true);
-    // But it is still what the viewer is looking at, so it can be hovered and entered.
-    expect(over.pointable!(west)).toBe(true);
+    // Its places are what the pointer finds, by way of moving across into it.
+    expect(over.pointable!(west)).toBe(false);
+    const layer = view.under.find((l) => l.nodes.some((n) => n.id === "r"))!;
+    expect(layer.via).toEqual({ id: "west", around: true });
+    expect(layer.pointable!(layer.nodes.find((n) => n.id === "r")!)).toBe(true);
     // Never the region you are in.
     expect(over.pointable!(over.nodes.find((n) => n.id === "east")!)).toBe(false);
+  });
+
+  test("entering a place through its region: the region where it is, nothing moving", async () => {
+    const { rig, stack, s } = await insideEast();
+    const before = rig.worldToScreen(300 * s, 150 * s); // q's corner
+    // q has no scene of its own, so only its region is entered.
+    expect(await stack.enterThrough({ id: "east", around: false }, "q")).toBe(false);
+    expect(stack.current.key).toBe("east");
+    const q = stack.current.renderNodes.find((n) => n.id === "q")!;
+    expect(rig.worldToScreen(q.x, q.y).x).toBeCloseTo(before.x, 6);
+    // And a place in the neighbour round it: across into the neighbour.
+    expect(await stack.enterThrough({ id: "west", around: true }, "r")).toBe(false);
+    expect(stack.current.key).toBe("west");
   });
 
   test("entering and leaving keep a place where it was on screen", async () => {
