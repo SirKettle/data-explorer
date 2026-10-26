@@ -1,6 +1,6 @@
 ---
 title: Concepts
-description: Focus, scenes, packed and radial layouts, drilling and zooming out, loading, and the accessible outline.
+description: Focus, scenes, packed, radial and fixed layouts, drilling and zooming out, loading, and the accessible outline.
 sidebar:
   order: 2
 ---
@@ -60,13 +60,27 @@ says. `parentOf` matters when they arrived another way, such as a deep link. The
 stack of the scenes the viewer entered and never walks your data, so a graph with cycles costs only
 the scenes actually visited.
 
-## Packed and radial scenes
+### Keeping the scene in view
 
-A scene is laid out one of two ways:
+The **`limits`** prop stops the viewer losing the scene: panning it off screen, shrinking it to a
+speck, or zooming into empty space. Each limit is on by default, and `false` turns one off:
+
+| Limit | Default | Means |
+| --- | --- | --- |
+| `pan` | `0.5` | The scene keeps covering at least this share of the view's width and of its height, or all of itself where it is smaller. Inside a scene, the scene drawn around it counts, so the viewer can still pan across into a neighbour. |
+| `zoomOut` | `0.5` | The top scene shrinks to no less than this share of the size that fits it. Deeper scenes have no such limit: zooming out of one leaves it. At most `0.65`, so zooming out of a scene opened at a deep link still reaches its parent. |
+| `zoomIn` | `2` | Zooming in stops when the scene's smallest item is this many times the size of the view. |
+
+## Packed, radial and fixed scenes
+
+A scene is laid out one of three ways:
 
 - **Packed**: clusters and nodes packed together, biggest first. How a level of a tree is shown.
 - **Radial**: one item in the middle with its neighbours round it. How one item's neighbourhood
   in a graph is shown.
+- **Fixed**: every item at the rectangle you give it, for data with places of its own, such as a
+  map. Set `layout: "fixed"` and give each item a `box`: see
+  [Fixed layouts and regions](/data-explorer/guides/fixed-layouts/).
 
 A scene is radial when it sets **`focusId`** to the id of the item to put in the middle. In a
 radial scene:

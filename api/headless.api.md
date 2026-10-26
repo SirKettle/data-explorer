@@ -15,9 +15,20 @@ export interface Camera {
 }
 
 // @public
+export interface CameraLimitOptions {
+    // (undocumented)
+    pan: number | null;
+    // (undocumented)
+    zoomIn: number | null;
+    // (undocumented)
+    zoomOut: number | null;
+}
+
+// @public
 export class CameraRig {
     constructor(readViewport: () => Viewport, camera: Camera);
     camera: Camera;
+    limit: ((camera: Camera) => Camera) | null;
     onChange: (() => void) | null;
     panByScreen(dx: number, dy: number): void;
     screenToWorld(screenX: number, screenY: number): ScreenPoint;
@@ -30,7 +41,7 @@ export class CameraRig {
 // @public
 export function clampPresence(value: number | undefined): number;
 
-// @public
+// @public (undocumented)
 export function createSceneStack<F>(input: SceneStackDeps<F>): {
     readonly current: StackedScene<F>;
     readonly depth: number;
@@ -48,6 +59,7 @@ export function createSceneStack<F>(input: SceneStackDeps<F>): {
     enterSibling: (id: string, opts?: {
         approach?: boolean;
     }) => Promise<void>;
+    enterThrough: (parent: PreviewParent, id: string) => Promise<"entered" | "centred" | "none">;
     ghostSibling: (id: string) => RenderNode | null;
     transitionView: (now?: number) => TransitionView;
     breadcrumb: () => {
@@ -107,6 +119,7 @@ export interface ExplorerBox {
 
 // @public
 export interface ExplorerCluster<F = unknown, D = unknown> {
+    box?: ExplorerRect | null;
     color?: ExplorerColour | null;
     data?: D;
     drillsInto: F | null;
@@ -116,7 +129,9 @@ export interface ExplorerCluster<F = unknown, D = unknown> {
     id: string;
     kind?: string | null;
     label: string;
+    labelAt?: ExplorerPoint | null;
     marks?: string[];
+    outline?: ExplorerOutline | null;
     ramp?: number | null;
     shape: ExplorerShape;
     sublabel?: string | null;
@@ -218,7 +233,15 @@ export interface ExplorerLayout {
 }
 
 // @public
+export interface ExplorerLimits {
+    pan?: number | false;
+    zoomIn?: number | false;
+    zoomOut?: number | false;
+}
+
+// @public
 export interface ExplorerNode<F = unknown, D = unknown> {
+    box?: ExplorerRect | null;
     color?: ExplorerColour | null;
     data?: D;
     drillsInto: F | null;
@@ -228,7 +251,9 @@ export interface ExplorerNode<F = unknown, D = unknown> {
     id: string;
     kind?: string | null;
     label: string;
+    labelAt?: ExplorerPoint | null;
     marks?: string[];
+    outline?: ExplorerOutline | null;
     ramp?: number | null;
     shape: ExplorerShape;
     sublabel?: string | null;
@@ -242,8 +267,12 @@ export interface ExplorerOptions {
     customViews?: ExplorerCustomViews;
     edges?: ExplorerEdges;
     effects?: ExplorerEffects;
+    limits?: ExplorerLimits;
     textures?: ExplorerTextures;
 }
+
+// @public
+export type ExplorerOutline = number[][][][];
 
 // @public
 export interface ExplorerPalette {
@@ -258,21 +287,37 @@ export interface ExplorerPalette {
 }
 
 // @public
+export interface ExplorerPoint {
+    x: number;
+    y: number;
+}
+
+// @public
 export type ExplorerPresence = (id: string) => number | undefined;
 
 // @public
+export interface ExplorerRect {
+    height: number;
+    width: number;
+    x: number;
+    y: number;
+}
+
+// @public
 export interface ExplorerScene<F = unknown, D = unknown> {
+    bounds?: ExplorerRect | null;
     clusters: ExplorerCluster<F, D>[];
     edges: ExplorerEdge[];
     expectedItemCount?: number;
     focusId?: string | null;
     heading: string;
     id: string;
+    layout?: "packed" | "fixed";
     nodes: ExplorerNode<F, D>[];
 }
 
 // @public
-export type ExplorerShape = "cloud" | "disc" | "square";
+export type ExplorerShape = "cloud" | "disc" | "square" | "region";
 
 // @public
 export interface ExplorerTexture {
@@ -305,13 +350,13 @@ export type NavigationDirection = "in" | "out" | "jump";
 // @public
 export interface NodeAppearance {
     glow: "none" | "static" | "pulse";
-    ring: "square" | "disc" | null;
+    ring: "square" | "disc" | "region" | null;
     shape: NodeShape;
     tint: number | null;
 }
 
 // @public
-export type NodeShape = "aggregate" | "nebula" | "square" | "disc";
+export type NodeShape = "aggregate" | "nebula" | "square" | "disc" | "region";
 
 // @public
 export function optionsKey(options: ResolvedOptions): string;
@@ -350,6 +395,12 @@ export function presenceLook(presence: number): {
 export const PREVIEW_RETRY_MS = 30000;
 
 // @public
+export interface PreviewParent {
+    around: boolean;
+    id: string;
+}
+
+// @public
 export function rampColor(t: number, ramp?: RampColours): number;
 
 // @public
@@ -383,20 +434,28 @@ export interface RenderNode {
     effects: ExplorerEffect[];
     emphasis: ExplorerEmphasis[];
     focus: unknown;
+    height: number;
     href: string | null;
     id: string;
     item: ExplorerItem;
     kind: string | null;
     label: string;
+    labelAt: {
+        x: number;
+        y: number;
+    } | null;
+    outline: number[][][][] | null;
     ramp: number | null;
     rawMarks: string[];
     shape: ExplorerShape;
+    // @deprecated
     size: number;
     sublabel: string | null;
     texture: {
         url: string;
         fit: "cover" | "contain";
     } | null;
+    width: number;
     x: number;
     y: number;
 }
@@ -480,6 +539,11 @@ export interface ResolvedOptions {
             alphaFloor: number;
         };
     };
+    limits: {
+        pan: number | null;
+        zoomOut: number | null;
+        zoomIn: number | null;
+    };
     textures: {
         minDiameterPx: number;
         budget: number;
@@ -516,6 +580,7 @@ export interface SceneStackDeps<F> {
     applyScene: (scene: StackedScene<F>) => void;
     initialFocus: F | null;
     initialScene: ExplorerScene<F>;
+    limits?: () => CameraLimitOptions;
     onNavigate?: (event: {
         from: StackedScene<F>;
         to: StackedScene<F>;
@@ -569,6 +634,7 @@ export interface TransitionLayer {
     edges?: readonly RenderEdge[];
     nodes: readonly RenderNode[];
     pointable?: (node: RenderNode) => boolean;
+    via?: PreviewParent;
 }
 
 // @public
@@ -576,6 +642,7 @@ export interface TransitionView {
     animating: boolean;
     currentAlpha: ((node: RenderNode) => number) | null;
     over: TransitionLayer | null;
+    passThrough: ReadonlySet<string>;
     under: TransitionLayer[];
 }
 

@@ -135,6 +135,26 @@ export interface ExplorerCustomViews {
   max?: number;
 }
 
+/**
+ * Keeping the scene in view: how far the viewer may pan and zoom. Each limit is on by default, and
+ * `false` turns it off.
+ */
+export interface ExplorerLimits {
+  /** How much of the view the scene must keep covering as it is panned, as a share (0 to 1) of
+   *  the view's width across and of its height down: `0.5` keeps at least half of each covered,
+   *  or all of the scene where it is smaller. Inside a scene, the scene drawn around it counts, so
+   *  the viewer can still pan across into a neighbour. Default `0.5`. */
+  pan?: number | false;
+  /** How far the top scene can be zoomed out, as a share (0 to 1) of the zoom that fits it: `0.5`
+   *  lets it shrink to half that size. Only where zooming out cannot leave the scene, and never
+   *  above `0.65`, so zooming out of a scene opened at a deep link still reaches its parent.
+   *  Default `0.5`. */
+  zoomOut?: number | false;
+  /** How far in, as a multiple (at least 1) of the zoom at which the scene's smallest item fills
+   *  the view. Default `2`. */
+  zoomIn?: number | false;
+}
+
 /** Every option group of the view, as `resolveOptions` (in `./headless`) takes them. Pass each as its own prop. */
 export interface ExplorerOptions {
   /** What is behind the scene. */
@@ -147,6 +167,8 @@ export interface ExplorerOptions {
   textures?: ExplorerTextures;
   /** Items drawn by custom renderers. */
   customViews?: ExplorerCustomViews;
+  /** How far the viewer may pan and zoom. */
+  limits?: ExplorerLimits;
 }
 
 /** One edge style with every default filled in. */
@@ -208,6 +230,8 @@ export interface ResolvedOptions {
   textures: { minDiameterPx: number; budget: number };
   /** The resolved `customViews`. */
   customViews: { max: number };
+  /** The resolved `limits`: `null` where a limit is off. */
+  limits: { pan: number | null; zoomOut: number | null; zoomIn: number | null };
 }
 
 /** The most custom views drawn at once unless a consumer says otherwise — see the plan's Step 7
@@ -241,7 +265,12 @@ export const DEFAULT_OPTIONS: ResolvedOptions = {
   // Each image is cropped to a 256 px square (256 KB of GPU memory), so 128 of them hold 32 MB.
   textures: { minDiameterPx: 48, budget: 128 },
   customViews: { max: DEFAULT_MAX_CUSTOM_VIEWS },
+  limits: { pan: 0.5, zoomOut: 0.5, zoomIn: 2 },
 };
+
+/** The most `limits.zoomOut` may be: under the 0.7 of a scene's fitted zoom at which zooming out
+ *  of a scene with no recorded entry climbs to its parent, so that climb stays reachable. */
+const MAX_ZOOM_OUT_LIMIT = 0.65;
 
 function unit(value: number | undefined, fallback: number): number {
   return value === undefined || !Number.isFinite(value) ? fallback : Math.min(1, Math.max(0, value));
@@ -283,6 +312,17 @@ export function resolveOptions(options: ExplorerOptions = {}): ResolvedOptions {
           ? Math.max(0, Math.floor(options.customViews.max))
           : d.customViews.max,
     },
+    limits: resolveLimits(options.limits),
+  };
+}
+
+function resolveLimits(limits: ExplorerLimits = {}): ResolvedOptions["limits"] {
+  const d = DEFAULT_OPTIONS.limits;
+  const zoomIn = limits.zoomIn;
+  return {
+    pan: limits.pan === false ? null : unit(limits.pan, d.pan!),
+    zoomOut: limits.zoomOut === false ? null : Math.min(MAX_ZOOM_OUT_LIMIT, unit(limits.zoomOut, d.zoomOut!)),
+    zoomIn: zoomIn === false ? null : zoomIn !== undefined && Number.isFinite(zoomIn) ? Math.max(1, zoomIn) : d.zoomIn,
   };
 }
 

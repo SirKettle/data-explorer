@@ -1,0 +1,45 @@
+---
+title: Fixed layouts and regions
+description: Drawing items at the places your data gives, such as a map, and regions with outlines.
+sidebar:
+  order: 8
+---
+
+import Demo from "../../../components/Demo.astro";
+import FixedLayout from "../../../demos/fixed-layout.tsx";
+import FixedLayoutSource from "../../../demos/fixed-layout.tsx?raw";
+
+Some data has places of its own: countries on a map, rooms on a floor plan, panels on a board. A
+**fixed** scene draws each item at the rectangle you give it, at the size you give it, and a
+**region** fills that rectangle, or the outline you give it, edge to edge. Zoom into an island
+below: its districts appear exactly where it was drawn, and the other island stays where it was.
+Point at the lake on South Isle: it is not part of the island.
+
+<Demo code={FixedLayoutSource} file="fixed-layout.tsx">
+  <FixedLayout client:only="react" />
+</Demo>
+
+- **`layout: "fixed"`** on a scene, and a **`box`** (`{ x, y, width, height }`) on each item, in
+  units of your choosing. An item without a box is not drawn. `weight` is not used for size.
+- **`bounds`** is the scene's extent in the same units; without it, the smallest rectangle round its
+  items. A fixed scene **streamed in pages** should set it, or the extent grows with each page and
+  everything already drawn moves.
+- **Children land on their parent** when a fixed scene is entered from an item of a fixed scene:
+  the child scene's `bounds` is fitted exactly onto the item's box. So keep one set of units all the
+  way down, and give each scene its parent item's box as `bounds`.
+- **`shape: "region"`** fills its box. With an **`outline`**, it is that shape instead: a list of
+  polygons, each a list of rings (its edge, then its holes), each a list of `[x, y]` points, in the
+  same units as the box. That is a GeoJSON MultiPolygon's `coordinates` once projected, so a
+  `Polygon`'s coordinates go in as `[coordinates]`. Keep the outline inside the box.
+- **Hit-testing** follows the outline: a hole is not part of the region, and nor is the box around
+  it. Hover, selection and the `ring` emphasis are drawn along the outline.
+- **Labels** go inside a region, in the middle of its box, or at **`labelAt`** (a point in the same
+  units) when the middle of the box falls outside the shape.
+- **The other shapes** work in a fixed scene too: a `square` fills its box, and a `disc` or `cloud`
+  is the largest circle that fits it. A custom renderer gets the box as `frame.width` and
+  `frame.height`.
+- **Your units do not matter.** Each fixed scene is scaled so its longer side is 1,000 units of its
+  own world, the size of any other scene's, so a small country deep in a map zooms in like anything
+  else.
+- **The accessible outline** lists a fixed scene's items in the order you give them, clusters first:
+  for a map, alphabetical is usually right.

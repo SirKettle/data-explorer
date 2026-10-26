@@ -126,7 +126,7 @@ export function createEdgeDrawer(parent: Container) {
   };
 }
 
-/** A node's circle: the box it is laid out in. Hit-testing uses the same box. */
+/** A node's circle: the largest that fits the box it is laid out in, as its shape is drawn. */
 function circle(node: RenderNode) {
-  return { x: node.x + node.size / 2, y: node.y + node.size / 2, r: node.size / 2 };
+  return { x: node.x + node.width / 2, y: node.y + node.height / 2, r: Math.min(node.width, node.height) / 2 };
 }

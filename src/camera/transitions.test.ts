@@ -130,6 +130,13 @@ describe("the cloud cross-fade (transitionView)", () => {
     for (const node of early.under[0]!.nodes) {
       expect(node.x).toBeGreaterThanOrEqual(box.x);
       expect(node.x + node.size).toBeLessThanOrEqual(box.x + box.width);
+      // Placed into the anchor, a node's box stays square and its deprecated `size` in step.
+      expect(node.width).toBeCloseTo(node.height, 9);
+      expect(node.size).toBe(Math.max(node.width, node.height));
+    }
+    for (const node of stack.current.renderNodes) {
+      const laid = stack.current.layout.boxes.find((b) => b.id === node.id)!;
+      expect([node.width, node.height, node.size]).toEqual([laid.width, laid.height, laid.width]);
     }
     const anchor = stack.current.renderNodes.find((n) => n.id === "groupA")!;
     const earlyChild = early.under[0]!.alpha(early.under[0]!.nodes[0]!);
@@ -470,5 +477,213 @@ describe("siblings live on around the current scene, and you can move across int
     await flush();
     expect(source.calls.length).toBe(callsBefore);
     expect(stack.transitionView(Infinity).under.some((layer) => layer.nodes[0]!.id === "itemB")).toBe(true);
+  });
+});
+
+describe("fixed scenes", () => {
+  /** A world of two side-by-side regions, the first holding two places, in one set of units. */
+  function world(): Record<string, Scene> {
+    const region = (id: string, x: number) => ({
+      id,
+      label: id,
+      weight: 1,
+      href: `/regions/${id}`,
+      drillsInto: id,
+      shape: "square" as const,
+      box: { x, y: 0, width: 400, height: 200 },
+    });
+    const place = (id: string, x: number, y: number) => ({
+      id,
+      label: id,
+      weight: 1,
+      href: `/places/${id}`,
+      drillsInto: null,
+      shape: "square" as const,
+      box: { x, y, width: 100, height: 50 },
+    });
+    return {
+      root: { id: "world", heading: "World", layout: "fixed", clusters: [region("east", 0), region("west", 400)], nodes: [], edges: [] },
+      east: { id: "east", heading: "East", layout: "fixed", bounds: { x: 0, y: 0, width: 400, height: 200 }, clusters: [], nodes: [place("p", 0, 0), place("q", 300, 150)], edges: [] },
+      west: { id: "west", heading: "West", layout: "fixed", bounds: { x: 400, y: 0, width: 400, height: 200 }, clusters: [], nodes: [place("r", 400, 0), place("t", 700, 150)], edges: [] },
+    };
+  }
+
+  test("a fixed child whose bounds is its parent item's box is previewed exactly where it will be", async () => {
+    const scenes = world();
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    // The world's units, scaled so its longer side is 1,000: `s` world units to one of the data's.
+    const s = stack.current.layout.width / 800;
+    expect(stack.current.layout.height).toBeCloseTo(200 * s);
+    const east = stack.current.layout.boxes.find((b) => b.id === "east")!;
+    expect(east).toMatchObject({ x: 0, y: 0, width: 400 * s, height: 200 * s });
+
+    rig.set({ x: 200 * s, y: 100 * s, scale: 1.2 });
+    stack.schedulePreviews();
+    await flush();
+    const preview = stack.transitionView(Infinity).under[0]!.nodes;
+    // No margin: the places sit at their own coordinates, in the world's units.
+    expect(preview.find((n) => n.id === "p")).toMatchObject({ x: expect.closeTo(0), y: expect.closeTo(0), width: expect.closeTo(100 * s), height: expect.closeTo(50 * s) });
+    expect(preview.find((n) => n.id === "q")).toMatchObject({ x: expect.closeTo(300 * s), y: expect.closeTo(150 * s) });
+  });
+
+  test("a region's outline and label point travel relative to its box, so a preview keeps them", async () => {
+    const scenes = world();
+    const east = scenes.east!;
+    scenes.east = {
+      ...east,
+      nodes: [{ ...east.nodes[0]!, shape: "region", outline: [[[[0, 0], [100, 0], [0, 50]]]], labelAt: { x: 25, y: 10 } }, east.nodes[1]!],
+    };
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    rig.set({ x: 250, y: 125, scale: 1.2 });
+    stack.schedulePreviews();
+    await flush();
+    const p = stack.transitionView(Infinity).under[0]!.nodes.find((n) => n.id === "p")!;
+    expect(p.outline).toEqual([[[[0, 0], [1, 0], [0, 1]]]]);
+    expect(p.labelAt).toEqual({ x: 0.25, y: 0.2 });
+    // A square ignores both.
+    expect(stack.transitionView(Infinity).under[0]!.nodes.find((n) => n.id === "q")).toMatchObject({ outline: null, labelAt: null });
+  });
+
+  /** Both regions' children loaded at the top, then `east` entered, with `west` showing its own
+   *  children in its place round it. */
+  async function insideEast() {
+    const scenes = world();
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    const s = stack.current.layout.width / 800;
+    rig.set({ x: 400 * s, y: 100 * s, scale: 0.75 });
+    stack.schedulePreviews();
+    await flush();
+    rig.set({ x: 200 * s, y: 100 * s, scale: 1.4 });
+    return { rig, stack, s };
+  }
+
+  test("a solid item showing its children in its place hands the pointer to them", async () => {
+    const { stack } = await insideEast();
+    // Still at the top: both regions have washed out to show their places.
+    const view = stack.transitionView(Infinity);
+    expect([...view.passThrough].sort()).toEqual(["east", "west"]);
+    const layer = view.under.find((l) => l.nodes.some((n) => n.id === "p"))!;
+    expect(layer.via).toEqual({ id: "east", around: false });
+    expect(layer.pointable!(layer.nodes.find((n) => n.id === "p")!)).toBe(true);
+  });
+
+  test("so does a solid neighbour drawn round the scene you are in", async () => {
+    const { stack } = await insideEast();
+    await stack.enter("east", { approach: false });
+    const view = stack.transitionView(Infinity);
+    const over = view.over!;
+    const west = over.nodes.find((n) => n.id === "west")!;
+    expect(over.alpha(west)).toBeLessThan(0.01);
+    // Its places are what the pointer finds, by way of moving across into it.
+    expect(over.pointable!(west)).toBe(false);
+    const layer = view.under.find((l) => l.nodes.some((n) => n.id === "r"))!;
+    expect(layer.via).toEqual({ id: "west", around: true });
+    expect(layer.pointable!(layer.nodes.find((n) => n.id === "r")!)).toBe(true);
+    // Never the region you are in.
+    expect(over.pointable!(over.nodes.find((n) => n.id === "east")!)).toBe(false);
+  });
+
+  test("double-clicking a place through its region enters the region, then centres the place", async () => {
+    // Centring animates the camera: every frame lands at the end of the animation.
+    const saved = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => setTimeout(() => cb(performance.now() + 60_000), 0)) as unknown as typeof requestAnimationFrame;
+    try {
+      await centresThePlace();
+    } finally {
+      globalThis.requestAnimationFrame = saved;
+    }
+  });
+
+  async function centresThePlace() {
+    const { rig, stack } = await insideEast();
+    const before = rig.camera.scale;
+    // q has no scene of its own: its region is entered, and q brought to the middle of the view.
+    expect(await stack.enterThrough({ id: "east", around: false }, "q")).toBe("centred");
+    expect(stack.current.key).toBe("east");
+    const q = stack.current.renderNodes.find((n) => n.id === "q")!;
+    const middle = rig.worldToScreen(q.x + q.width / 2, q.y + q.height / 2);
+    expect(middle.x).toBeCloseTo(viewport.width / 2, 6);
+    expect(middle.y).toBeCloseTo(viewport.height / 2, 6);
+    // Zoomed in, but never past where q fills the view.
+    expect(rig.camera.scale).toBeGreaterThan(before);
+    expect(Math.max((q.width * rig.camera.scale) / viewport.width, (q.height * rig.camera.scale) / viewport.height)).toBeLessThanOrEqual(0.92 / 1.05 + 1e-9);
+    // So the middle of the view is in east: nothing moves you back across.
+    stack.maybeMoveAcross();
+    expect(stack.current.key).toBe("east");
+
+    // A place in the neighbour round it: across into the neighbour, then the place centred.
+    expect(await stack.enterThrough({ id: "west", around: true }, "r")).toBe("centred");
+    expect(stack.current.key).toBe("west");
+  }
+
+  test("entering and leaving keep a place where it was on screen", async () => {
+    const scenes = world();
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    const s = stack.current.layout.width / 800;
+    rig.set({ x: 200 * s, y: 100 * s, scale: 1.2 });
+    const before = rig.worldToScreen(300 * s, 150 * s); // q's corner
+    await stack.enter("east", { approach: false });
+    expect(stack.current.key).toBe("east");
+    const q = stack.current.renderNodes.find((n) => n.id === "q")!;
+    const after = rig.worldToScreen(q.x, q.y);
+    expect(after.x).toBeCloseTo(before.x, 6);
+    expect(after.y).toBeCloseTo(before.y, 6);
+    expect(q.width * rig.camera.scale).toBeCloseTo(100 * s * 1.2, 6);
+
+    // The sibling, drawn round the region you are in, is where it was too.
+    const west = stack.transitionView(Infinity).over!.nodes.find((n) => n.id === "west")!;
+    expect(rig.worldToScreen(west.x, west.y).x).toBeCloseTo(before.x + 100 * s * 1.2, 6);
+
+    await stack.leave(false);
+    expect(stack.current.key).toBe("root");
+    expect(rig.worldToScreen(300 * s, 150 * s).x).toBeCloseTo(before.x, 6);
+  });
+});
+
+describe("pan and zoom limits", () => {
+  const limits = { pan: 0.5, zoomOut: 0.5, zoomIn: 2 };
+
+  function limited(scenes: Record<string, Scene>, root: Scene) {
+    const rig = new CameraRig(() => viewport, { x: 0, y: 0, scale: 1 });
+    const stack = createSceneStack({ rig, source: fakeSource(scenes), initialFocus: null, initialScene: root, applyScene: () => {}, limits: () => limits });
+    return { rig, stack };
+  }
+
+  test("at the top, the scene cannot be zoomed out below half its fitted size, nor panned away", () => {
+    const root = overview({ groupA: 1000, groupB: 1000 });
+    const { rig, stack } = limited({ root }, root);
+    const { width, height } = stack.current.layout;
+    const fitted = Math.min((viewport.width * 0.85) / width, (viewport.height * 0.85) / height);
+    rig.set({ x: width / 2, y: height / 2, scale: fitted * 0.01 });
+    expect(rig.camera.scale).toBeCloseTo(fitted * 0.5, 9);
+    rig.panByScreen(-100_000, 0);
+    // Half the view's width stays covered, or all of the scene where it is smaller than that.
+    expect(rig.worldToScreen(width, 0).x).toBeGreaterThanOrEqual(Math.min(0.5 * viewport.width, width * rig.camera.scale) - 1e-6);
+  });
+
+  test("zooming in stops at twice the zoom at which the smallest item fills the view", () => {
+    const root = overview({ groupA: 1000, groupB: 10 });
+    const { rig, stack } = limited({ root }, root);
+    const smallest = Math.min(...stack.current.renderNodes.map((n) => n.width));
+    rig.set({ ...rig.camera, scale: 1e9 });
+    expect(rig.camera.scale).toBeCloseTo(2 * Math.min(viewport.width, viewport.height) / smallest, 6);
+  });
+
+  test("inside a scene, the scene drawn round it counts: the viewer can pan across to a neighbour", async () => {
+    const root = overview({ groupA: 1000, groupB: 1000 });
+    const scenes = { root, groupA: groupScene("groupA", ["itemX", "itemY"]) };
+    const { rig, stack } = limited(scenes, root);
+    const a = stack.current.layout.boxes.find((b) => b.id === "groupA")!;
+    rig.set({ x: a.x + a.width / 2, y: a.y + a.width / 2, scale: (0.9 * Math.min(viewport.width, viewport.height)) / a.width });
+    await stack.enter("groupA", { approach: false });
+    expect(stack.current.key).toBe("groupA");
+    // groupB, round it, is where the middle of the view may go.
+    const b = stack.transitionView(Infinity).over!.nodes.find((n) => n.id === "groupB")!;
+    rig.set({ ...rig.camera, x: b.x + b.width / 2, y: b.y + b.height / 2 });
+    expect(rig.camera.x).toBeCloseTo(b.x + b.width / 2, 6);
+    // And no zoom-out limit inside a scene: zooming out leaves it instead.
+    const scale = rig.camera.scale * 0.01;
+    rig.set({ ...rig.camera, scale });
+    expect(rig.camera.scale).toBeCloseTo(scale, 9);
   });
 });

@@ -40,7 +40,7 @@ export const PREVIEW_MIN_FILL = 0.14;
 export const PREVIEW_ARRIVAL_MS = 420;
 
 /** The fraction of the anchor box the child scene is fitted into, both in a preview and at the
- *  swap (the scene stack's `CONTAIN_PADDING_FACTOR` is this). Was 0.9; lowered so the children sit
+ *  swap (the scene stack's entry scale is `childToParentFactor`). Was 0.9; lowered so the children sit
  *  within the cloud's visible body rather than spilling past its faint edge. */
 export const CHILD_CONTAIN_FRACTION = 0.8;
 
@@ -68,41 +68,46 @@ export function cloudAlpha(fill: number, childVisibility: number, solid = false)
   return (1 - washout * childVisibility) * (1 - smoothstep(HAZE_DISSOLVE_START, HAZE_DISSOLVE_END, fill));
 }
 
+/** A box in world units. Square for packed and radial scenes; any rectangle in general. */
 export interface PlainBox {
   x: number;
   y: number;
-  size: number;
+  width: number;
+  height: number;
 }
 
 /**
  * The child layout's world units per parent world unit, inverted: one child world unit is this many
- * parent world units. Pure geometry — the child layout fitted into `CHILD_CONTAIN_FRACTION` of the
- * anchor box — so it is the same at entry, at leave and for a preview, regardless of camera.
+ * parent world units. Pure geometry — the child layout fitted into `fraction` of the anchor box
+ * (`CHILD_CONTAIN_FRACTION`, or 1 to fill it exactly) — so it is the same at entry, at leave and
+ * for a preview, regardless of camera.
  */
-export function childToParentFactor(anchorSize: number, childWidth: number, childHeight: number): number {
-  return (CHILD_CONTAIN_FRACTION * anchorSize) / Math.max(childWidth, childHeight, 1e-9);
+export function childToParentFactor(anchor: Pick<PlainBox, "width" | "height">, childWidth: number, childHeight: number, fraction = CHILD_CONTAIN_FRACTION): number {
+  return fraction * Math.min(anchor.width / Math.max(childWidth, 1e-9), anchor.height / Math.max(childHeight, 1e-9));
 }
 
 /** A child-world box expressed in parent world coordinates, centred in `anchor`. */
-export function childBoxInParent(box: PlainBox, anchor: PlainBox, childWidth: number, childHeight: number): PlainBox {
-  const k = childToParentFactor(anchor.size, childWidth, childHeight);
-  const anchorCx = anchor.x + anchor.size / 2;
-  const anchorCy = anchor.y + anchor.size / 2;
+export function childBoxInParent(box: PlainBox, anchor: PlainBox, childWidth: number, childHeight: number, fraction = CHILD_CONTAIN_FRACTION): PlainBox {
+  const k = childToParentFactor(anchor, childWidth, childHeight, fraction);
+  const anchorCx = anchor.x + anchor.width / 2;
+  const anchorCy = anchor.y + anchor.height / 2;
   return {
     x: anchorCx + (box.x - childWidth / 2) * k,
     y: anchorCy + (box.y - childHeight / 2) * k,
-    size: box.size * k,
+    width: box.width * k,
+    height: box.height * k,
   };
 }
 
 /** The inverse of `childBoxInParent`: a parent-world box expressed in the child's world. */
-export function parentBoxInChild(box: PlainBox, anchor: PlainBox, childWidth: number, childHeight: number): PlainBox {
-  const k = childToParentFactor(anchor.size, childWidth, childHeight);
-  const anchorCx = anchor.x + anchor.size / 2;
-  const anchorCy = anchor.y + anchor.size / 2;
+export function parentBoxInChild(box: PlainBox, anchor: PlainBox, childWidth: number, childHeight: number, fraction = CHILD_CONTAIN_FRACTION): PlainBox {
+  const k = childToParentFactor(anchor, childWidth, childHeight, fraction);
+  const anchorCx = anchor.x + anchor.width / 2;
+  const anchorCy = anchor.y + anchor.height / 2;
   return {
     x: childWidth / 2 + (box.x - anchorCx) / k,
     y: childHeight / 2 + (box.y - anchorCy) / k,
-    size: box.size / k,
+    width: box.width / k,
+    height: box.height / k,
   };
 }

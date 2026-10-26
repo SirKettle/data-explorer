@@ -264,7 +264,7 @@ export const FALLBACK_PALETTE: ResolvedPalette = {
 
 /** Which texture family a node is drawn with. `aggregate` is the hollow, muted ring a
  *  non-navigable overflow cluster gets (ADR-016 Decision 3). */
-export type NodeShape = "aggregate" | "nebula" | "square" | "disc";
+export type NodeShape = "aggregate" | "nebula" | "square" | "disc" | "region";
 
 /** How the canvas draws one item. */
 export interface NodeAppearance {
@@ -273,7 +273,7 @@ export interface NodeAppearance {
   /** The sprite tint, or `null` for an aggregate, which takes the `aggregate` token instead. */
   tint: number | null;
   /** The ownership halo/ring's shape, or `null` when the node carries no ring. */
-  ring: "square" | "disc" | null;
+  ring: "square" | "disc" | "region" | null;
   /** US071 — the item's glow: `pulse` breathes, `static` holds still, `none` draws nothing. */
   glow: "none" | "static" | "pulse";
 }
@@ -301,7 +301,7 @@ export function glowFor(node: RenderNode, switches: GlowSwitches = ALL_EFFECTS):
 export function appearanceFor(node: RenderNode, ramp: RampColours = DEFAULT_RAMP, switches: GlowSwitches = ALL_EFFECTS): NodeAppearance {
   const ringed = node.emphasis.includes("ring");
   // An aggregate is drawn as a hollow disc, so its ring (if any) is a disc too.
-  const ring = ringed ? (!node.aggregate && node.shape === "square" ? "square" : "disc") : null;
+  const ring = ringed ? (node.aggregate ? "disc" : node.shape === "square" || node.shape === "region" ? node.shape : "disc") : null;
   const glow = glowFor(node, switches);
   if (node.aggregate) return { shape: "aggregate", tint: null, ring, glow };
   // US071 — an item's own colour wins over its ramp position, which wins over the per-id tint.

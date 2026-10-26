@@ -22,7 +22,7 @@ export interface ExplorerBox {
   y: number;
   /** Width. */
   width: number;
-  /** Height (equal to width). */
+  /** Height: equal to width, except in a fixed layout. */
   height: number;
 }
 
@@ -421,4 +421,57 @@ export function radialFocusLayout(scene: ExplorerScene): ExplorerLayout {
 
   const span = centreX * 2;
   return { boxes, width: span, height: span };
+}
+
+/** The longer side of a fixed scene's world. */
+const FIXED_EXTENT = 1000;
+
+/**
+ * A fixed scene (`layout: "fixed"`): every item at its own `box`, nothing placed or sized here. The
+ * boxes move so the scene's `bounds` (or, without one, the smallest rectangle round them) starts at
+ * (0, 0), as every layout's world does, and scale together so its longer side is `FIXED_EXTENT`.
+ * That keeps every scene's world about the size of a packed one, however small its own units get
+ * deeper down, so the camera's scale limits never stop a zoom before a scene can be entered. Only
+ * proportions matter to how a child is fitted into its parent, so nothing else changes. An item
+ * without a box is left out. Clusters then nodes, in the scene's order, so later items are drawn
+ * over earlier ones.
+ *
+ * A scene that streams in should set `bounds`: without it, the extent grows with each page, and
+ * every item already drawn would move.
+ */
+export function fixedLayout(scene: ExplorerScene): ExplorerLayout {
+  const items = [
+    ...scene.clusters.map((item) => ({ item, kind: "cluster" as const })),
+    ...scene.nodes.map((item) => ({ item, kind: "node" as const })),
+  ].filter(({ item }) => item.box != null && item.box.width > 0 && item.box.height > 0);
+
+  let bounds = scene.bounds;
+  if (!bounds) {
+    let left = Infinity;
+    let top = Infinity;
+    let right = -Infinity;
+    let bottom = -Infinity;
+    for (const { item } of items) {
+      const box = item.box!;
+      left = Math.min(left, box.x);
+      top = Math.min(top, box.y);
+      right = Math.max(right, box.x + box.width);
+      bottom = Math.max(bottom, box.y + box.height);
+    }
+    bounds = items.length > 0 ? { x: left, y: top, width: right - left, height: bottom - top } : { x: 0, y: 0, width: 1, height: 1 };
+  }
+
+  const k = FIXED_EXTENT / Math.max(bounds.width, bounds.height, 1e-9);
+  return {
+    boxes: items.map(({ item, kind }) => ({
+      id: item.id,
+      kind,
+      x: (item.box!.x - bounds.x) * k,
+      y: (item.box!.y - bounds.y) * k,
+      width: item.box!.width * k,
+      height: item.box!.height * k,
+    })),
+    width: bounds.width * k,
+    height: bounds.height * k,
+  };
 }

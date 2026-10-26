@@ -9,8 +9,9 @@
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-/** KB gzipped. Set 2026-10-12 with about 20% headroom over the 0.1.0 build. */
-const BUDGET = { index: 28, headless: 17, pixi: 1, renderer: 14 };
+/** KB gzipped. Set 2026-10-12 with about 20% headroom over the 0.1.0 build; `headless` raised
+ *  2026-10-26 from 17 to 20 when fixed layouts and regions used up its headroom. */
+const BUDGET = { index: 28, headless: 20, pixi: 1, renderer: 14 };
 
 const dist = join(import.meta.dir, "../dist");
 const read = (file: string) => Bun.file(join(dist, file)).text();

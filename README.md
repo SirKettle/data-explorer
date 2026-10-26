@@ -22,12 +22,13 @@ npm install @thirkettle/data-explorer pixi.js react react-dom
 it shows.
 
 - [Getting started](https://sirkettle.github.io/data-explorer/getting-started/): install to a working explorer in one file.
-- [Concepts](https://sirkettle.github.io/data-explorer/concepts/): focus, scenes, packed and radial layouts, drilling and zooming out,
+- [Concepts](https://sirkettle.github.io/data-explorer/concepts/): focus, scenes, packed, radial and fixed layouts, drilling and zooming out,
   loading, and the accessible outline.
 - Guides: [styling and theming](https://sirkettle.github.io/data-explorer/guides/styling-and-theming/),
   [colours and backgrounds](https://sirkettle.github.io/data-explorer/guides/colours-and-backgrounds/), [edges](https://sirkettle.github.io/data-explorer/guides/edges/),
   [glow, pulse and emphasis](https://sirkettle.github.io/data-explorer/guides/effects/), [images and CORS](https://sirkettle.github.io/data-explorer/guides/images-and-cors/),
   [events](https://sirkettle.github.io/data-explorer/guides/events/), [custom renderers](https://sirkettle.github.io/data-explorer/guides/custom-renderers/),
+  [fixed layouts and regions](https://sirkettle.github.io/data-explorer/guides/fixed-layouts/),
   [performance](https://sirkettle.github.io/data-explorer/guides/performance/), [accessibility](https://sirkettle.github.io/data-explorer/guides/accessibility/) and
   [testing](https://sirkettle.github.io/data-explorer/guides/testing/).
 - [API reference](https://sirkettle.github.io/data-explorer/reference/), generated from the doc comments.
@@ -40,7 +41,8 @@ You give the explorer a **scene source**: for any **focus** you choose (a path, 
 top) it returns a **scene** of groups (`clusters`) and things (`nodes`), and says what each item
 **drills into** and where **zooming out** leads. The explorer handles the camera, gestures,
 transitions, layout and an accessible outline of real links. A scene is **packed** (a level of a
-tree) or **radial** (one item's neighbourhood in a graph). It never walks your data itself, so
+tree), **radial** (one item's neighbourhood in a graph) or **fixed** (items at places of their own,
+such as regions on a map). It never walks your data itself, so
 graphs with cycles cost only the scenes a viewer visits.
 
 ## Development

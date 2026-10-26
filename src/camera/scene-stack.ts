@@ -21,7 +21,8 @@
 
 import { parseColour } from "../colour";
 import { prefersReducedMotion } from "../motion";
-import { radialFocusLayout, sunflowerLayout, sunflowerLayoutAppend, type ExplorerLayout } from "../scene/layout";
+import { contains, distanceToCentre, fillFraction, relativeOutline } from "../scene/geometry";
+import { fixedLayout, radialFocusLayout, sunflowerLayout, sunflowerLayoutAppend, type ExplorerLayout } from "../scene/layout";
 import type { SceneSource } from "../scene/source";
 import type { ExplorerCluster, ExplorerEffect, ExplorerEmphasis, ExplorerItem, ExplorerNode, ExplorerScene, ExplorerShape } from "../scene/types";
 import {
@@ -31,7 +32,9 @@ import {
   clampScale,
   fitCamera,
   lerpCamera,
+  limitCamera,
   scheduleFrame,
+  type CameraLimits,
   type Camera,
   type CameraRig,
   type ScreenPoint,
@@ -40,12 +43,13 @@ import {
   childAlpha,
   childBoxInParent,
   childToParentFactor,
+  CHILD_CONTAIN_FRACTION,
   cloudAlpha,
   parentBoxInChild,
   PREVIEW_ARRIVAL_MS,
   PREVIEW_MIN_FILL,
   PREVIEW_PREFETCH_FILL,
-  CHILD_CONTAIN_FRACTION,
+  type PlainBox,
 } from "./transition";
 
 /** What the renderer draws, one per visible cluster/node. Positions are in the current scene's
@@ -57,10 +61,20 @@ export interface RenderNode {
   x: number;
   /** Top edge of the item's box. */
   y: number;
-  /** The box's width and height (boxes are square). */
+  /** The box's width. Square (equal to `height`) in packed and radial scenes. */
+  width: number;
+  /** The box's height. */
+  height: number;
+  /** The larger of `width` and `height`: the box's side, when it is square.
+   *  @deprecated Use `width` and `height`. */
   size: number;
   /** The item's declared shape. */
   shape: ExplorerShape;
+  /** A `region`'s outline relative to this box ((0, 0) its top left, (1, 1) its bottom right), so it
+   *  holds wherever the box is placed; `null` for anything else, or a region that is its whole box. */
+  outline: number[][][][] | null;
+  /** Where a `region`'s label goes, relative to this box as `outline` is; `null` for the middle. */
+  labelAt: { x: number; y: number } | null;
   /** Whether entering it opens a scene (it has a `drillsInto` and is not the radial centre). */
   drillable: boolean;
   /** The source's own focus this node drills into (`ExplorerNode.drillsInto`), opaque here — `null`
@@ -140,10 +154,22 @@ export interface TransitionLayer {
   alpha: (node: RenderNode) => number;
   /** Whether the layer's nodes may carry labels/marks. */
   decorated: boolean;
-  /** Which of the layer's nodes can be hovered, selected and double-clicked — absent means none. */
+  /** Which of the layer's nodes can be hovered, selected and double-clicked — absent means none.
+   *  It decides visibility too: the renderer points at exactly these, however faint. */
   pointable?: (node: RenderNode) => boolean;
+  /** For a layer of an item's children: that item, which is entered (or, when `around`, moved
+   *  into sideways) to reach them. See `SceneStack.enterThrough`. */
+  via?: PreviewParent;
   /** US071 — the layer's scene's edges, drawn at the lower alpha of their two ends. */
   edges?: readonly RenderEdge[];
+}
+
+/** The item whose children a preview layer draws, and how it is reached from the current scene. */
+export interface PreviewParent {
+  /** Its id: an item of the current scene, or (`around`) of the scene drawn around it. */
+  id: string;
+  /** Whether it is a sibling drawn around the current scene rather than one of its own items. */
+  around: boolean;
 }
 
 /**
@@ -156,6 +182,9 @@ export interface TransitionView {
   under: TransitionLayer[];
   /** An opacity multiplier for the current scene's own nodes — `null` means "all 1". */
   currentAlpha: ((node: RenderNode) => number) | null;
+  /** Solid items of the current scene whose children now show more than they do: the pointer
+   *  passes through them to the children (`under`, pointable). */
+  passThrough: ReadonlySet<string>;
   /** The parent scene just left, drawn *over* the current scene: the node entered dissolving as a
    *  haze, its siblings exactly as they were drawn before entry. */
   over: TransitionLayer | null;
@@ -180,13 +209,16 @@ interface Frame<F> {
   /** The camera the user had in it, restored on the way back out. */
   camera: Camera;
   /** The box, in that scene's layout, that was entered through. */
-  anchorBox: { x: number; y: number; size: number };
+  anchorBox: PlainBox;
+  /** How much of `anchorBox` the scene inside was fitted into (`containFraction`). */
+  contain: number;
   /** The scale the child scene was entered at — the reference for "zoomed back out of it". */
   entryScale: number;
 }
 
-const CONTAIN_PADDING_FACTOR = CHILD_CONTAIN_FRACTION;
 const ENTER_FILL_FRACTION = 0.92;
+/** How far a double-click zooms in on an item with no scene of its own (as `DataExplorer` does). */
+const DOUBLE_TAP_ZOOM = 2.5;
 const AUTO_ENTER_SIZE_FRACTION = 0.85;
 const AUTO_LEAVE_SCALE_FRACTION = 0.7;
 /** Step 3 — the smallest a sibling can be on screen and still be moved into sideways: the size a
@@ -207,6 +239,9 @@ const MAX_PREVIEW_LOADS = 2;
  *  very next frame, for as long as the node stayed on screen — hundreds of requests a minute. */
 export const PREVIEW_RETRY_MS = 30_000;
 
+/** A ghost fainter than this, with none of its children showing either, is not there to point at. */
+const MIN_POINTABLE_ALPHA = 0.01;
+
 const APPROACH_MS = 500;
 const LEAVE_APPROACH_MS = 300;
 const RESTORE_MS = 400;
@@ -217,8 +252,47 @@ function isSolid(node: RenderNode): boolean {
   return node.shape !== "cloud" || node.aggregate;
 }
 
+/** Just the box of anything boxed: a layout box or a render node. */
+function plainBox(box: PlainBox): PlainBox {
+  return { x: box.x, y: box.y, width: box.width, height: box.height };
+}
+
+/** The larger side of an item's box: its diameter, for the round footprint that fill and "under the
+ *  middle of the screen" are measured by. */
+function extentOf(box: PlainBox): number {
+  return Math.max(box.width, box.height);
+}
+
+/** `node` moved to `box` (another scene's world), its deprecated `size` kept in step. */
+function placed(node: RenderNode, box: PlainBox): RenderNode {
+  return { ...node, ...box, size: extentOf(box) };
+}
+
+/** A region's outline and label point, relative to its own box (see `RenderNode.outline`). */
+function regionParts(item: ExplorerItem): Pick<RenderNode, "outline" | "labelAt"> {
+  const box = item.box;
+  if (item.shape !== "region" || !box || box.width <= 0 || box.height <= 0) return { outline: null, labelAt: null };
+  return {
+    outline: item.outline?.length ? relativeOutline(item.outline, box) : null,
+    labelAt: item.labelAt ? { x: (item.labelAt.x - box.x) / box.width, y: (item.labelAt.y - box.y) / box.height } : null,
+  };
+}
+
 function layoutFor(scene: ExplorerScene): ExplorerLayout {
+  if (scene.layout === "fixed") return fixedLayout(scene);
   return scene.focusId ? radialFocusLayout(scene) : sunflowerLayout(scene);
+}
+
+/** A streamed scene's layout after another page: grown in place, so nothing already drawn moves. */
+function layoutAppend(scene: ExplorerScene, previous: ExplorerLayout): ExplorerLayout {
+  return scene.layout === "fixed" ? fixedLayout(scene) : sunflowerLayoutAppend(scene, previous);
+}
+
+/** How much of its anchor's box a child scene is fitted into: all of it when both scenes are fixed,
+ *  so a child whose `bounds` is its parent item's box lands exactly on it; otherwise a margin that
+ *  keeps the children inside a cloud's visible body. */
+function containFraction(parent: ExplorerScene, child: ExplorerScene): number {
+  return parent.layout === "fixed" && child.layout === "fixed" ? 1 : CHILD_CONTAIN_FRACTION;
 }
 
 function toRenderNodes<F>(scene: ExplorerScene<F>, layout: ExplorerLayout): RenderNode[] {
@@ -238,8 +312,11 @@ function toRenderNodes<F>(scene: ExplorerScene<F>, layout: ExplorerLayout): Rend
       id: item.id,
       x: box.x,
       y: box.y,
-      size: box.width,
+      width: box.width,
+      height: box.height,
+      size: extentOf(box),
       shape: item.shape,
+      ...regionParts(item),
       drillable,
       focus: drillable ? focus : null,
       label: item.label,
@@ -299,6 +376,9 @@ export interface SceneStackDeps<F> {
   applyScene: (scene: StackedScene<F>) => void;
   /** Ask for a redraw without a scene or camera change — a preview arrived or grew. */
   requestRedraw?: () => void;
+  /** How far the viewer may pan and zoom (the view's resolved `limits`), read on every camera
+   *  change. Absent: no limits beyond the camera's own scale range. */
+  limits?: () => CameraLimitOptions;
   /** US071 — a navigation made `to` current in place of `from`: `in` by entering an item, `out` by
    *  leaving to a parent, `jump` by a reset or `jumpTo`. Fired after `applyScene`. A streamed page
    *  or a refresh of the same scene is not a navigation and never fires this. A sideways move is a
@@ -332,7 +412,14 @@ function newHolder<F>(): PreviewHolder<F> {
  * previews of the scenes they are zooming towards, and the transitions between them. Its `enter`
  * animates the camera unless given `{ approach: false }`; for tests, `createTestStack` is simpler.
  */
-export function createSceneStack<F>({ rig, source, initialFocus, initialScene, applyScene, requestRedraw, onNavigate }: SceneStackDeps<F>) {
+/** The view's resolved `limits` (`ExplorerLimits`): `null` where a limit is off. */
+export interface CameraLimitOptions {
+  pan: number | null;
+  zoomOut: number | null;
+  zoomIn: number | null;
+}
+
+export function createSceneStack<F>({ rig, source, initialFocus, initialScene, applyScene, requestRedraw, onNavigate, limits }: SceneStackDeps<F>) {
   const keyOf = (focus: F | null) => source.keyOf(focus);
   /** A render node's drill target, handed back to the source as the type it came from. */
   const focusOf = (node: RenderNode) => node.focus as F | null;
@@ -345,6 +432,39 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
   let animating = false;
   let transitioning = false;
   let animationGeneration = 0;
+
+  if (limits) rig.limit = (camera) => limitCamera(camera, rig.viewport, cameraLimits(limits()));
+
+  /** The largest scale at which any item of the current scene still fits the view, by scene and
+   *  viewport size: the reference for `limits.zoomIn`. */
+  let itemFitCache: { scene: StackedScene<F>; width: number; height: number; scale: number } | null = null;
+  function smallestItemFit(): number {
+    const vp = rig.viewport;
+    if (itemFitCache && itemFitCache.scene === current && itemFitCache.width === vp.width && itemFitCache.height === vp.height) return itemFitCache.scale;
+    let scale = 0;
+    for (const n of current.renderNodes) scale = Math.max(scale, Math.min(vp.width / n.width, vp.height / n.height));
+    itemFitCache = { scene: current, width: vp.width, height: vp.height, scale };
+    return scale;
+  }
+
+  /**
+   * Where the camera may go in the current scene. The content is the scene, or inside one the
+   * scene drawn around it, so the viewer can pan across into a neighbour. The zoom-out limit holds
+   * only at the top of the stack, as zooming out of anything deeper leaves it; the zoom-in limit is
+   * a multiple of the zoom at which the scene's smallest item fills the view.
+   */
+  function cameraLimits(options: CameraLimitOptions): CameraLimits {
+    const vp = rig.viewport;
+    const { width, height } = current.layout;
+    const frame = stack[stack.length - 1];
+    const bounds = frame
+      ? parentBoxInChild({ x: 0, y: 0, width: frame.scene.layout.width, height: frame.scene.layout.height }, frame.anchorBox, width, height, frame.contain)
+      : { x: 0, y: 0, width, height };
+    const minScale = !frame && options.zoomOut !== null ? fitCamera(vp, width, height, 0.85).scale * options.zoomOut : 0;
+    const fit = options.zoomIn !== null ? smallestItemFit() : 0;
+    const maxScale = fit > 0 ? Math.max(minScale, fit * options.zoomIn!) : Infinity;
+    return { bounds, keep: options.pan, minScale, maxScale };
+  }
 
   // D1.3's prefetch bound, widened from one to `MAX_PREVIEW_LOADS` now that every visible node
   // previews. Not literally cancelled when superseded (fetch has no cheap abort here) — once a load
@@ -439,7 +559,7 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     const promise = streamScene(focus, (updated) => {
         if (current.key === key) return refineIfCurrent(focus, updated);
         if (!entry) return;
-        const layout = sunflowerLayoutAppend(updated, entry.scene.layout);
+        const layout = layoutAppend(updated, entry.scene.layout);
         entry.scene = { ...entry.scene, heading: updated.heading, layout, scene: updated, ...renderable(updated, layout) };
         requestRedraw?.();
       }).then((scene) => stacked(focus, scene));
@@ -472,14 +592,15 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
    *  `layout` swap only — it never touches the camera, so a scene filling in behind the user never
    *  moves anything they're looking at.
    *
-   *  **Uses `sunflowerLayoutAppend`, not `toStackedScene`'s ordinary `layoutFor`.** A full relayout
+   *  **Uses `layoutAppend`, not `toStackedScene`'s ordinary `layoutFor`.** A full relayout
    *  on every streamed page reshuffled and reshifted every already-visible dot each time (confirmed
    *  directly in a browser) — `sunflowerLayoutAppend`'s own doc comment has the reasoning. Streaming
    *  only ever targets a packed (non-neighbourhood) scene, which never has a
-   *  `focusId`, so the incremental append — not `radialFocusLayout` — is always the right one here. */
+   *  `focusId`, so the incremental append — not `radialFocusLayout` — is always the right one here;
+   *  a fixed scene's positions are its own, so `layoutAppend` simply lays it out again. */
   function refineIfCurrent(focus: F, updated: ExplorerScene<F>): void {
     if (current.key !== keyOf(focus)) return;
-    const layout = sunflowerLayoutAppend(updated, current.layout);
+    const layout = layoutAppend(updated, current.layout);
     const refined: StackedScene<F> = { key: current.key, focus, heading: updated.heading, layout, scene: updated, ...renderable(updated, layout) };
     current = refined;
     applyScene(refined);
@@ -548,14 +669,14 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
       if (!here.previews.has(childKey)) loadPreview(focusOf(node) as F).catch(() => {});
       previewAnchorOverride = anchorId;
       const vp = rig.viewport;
-      const target = cameraFillingBox(vp, { x: anchorBox.x, y: anchorBox.y, size: anchorBox.width }, ENTER_FILL_FRACTION);
-      await tweenZoomToWorldPoint(APPROACH_MS, boxCentre({ x: anchorBox.x, y: anchorBox.y, size: anchorBox.width }), { x: vp.width / 2, y: vp.height / 2 }, target.scale);
+      const target = cameraFillingBox(vp, anchorBox, ENTER_FILL_FRACTION);
+      await tweenZoomToWorldPoint(APPROACH_MS, boxCentre(anchorBox), { x: vp.width / 2, y: vp.height / 2 }, target.scale);
     }
 
     const vp = rig.viewport;
-    const anchorCentre = boxCentre({ x: anchorBox.x, y: anchorBox.y, size: anchorBox.width });
+    const anchorCentre = boxCentre(anchorBox);
     const anchorScreenCentre = rig.worldToScreen(anchorCentre.x, anchorCentre.y);
-    const anchorScreenSize = anchorBox.width * rig.camera.scale;
+    const anchorScale = rig.camera.scale;
 
     // An already-previewed child swaps in synchronously — the very layout that was just drawn
     // inside the anchor, so nothing moves.
@@ -572,7 +693,8 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     previewAnchorOverride = null;
 
     // Clamped BEFORE the placement is solved — see ADR-016 A14, the bug this guards against.
-    const containScale = clampScale((anchorScreenSize * CONTAIN_PADDING_FACTOR) / Math.max(nextScene.layout.width, nextScene.layout.height));
+    const contain = containFraction(fromScene.scene, nextScene.scene);
+    const containScale = clampScale(anchorScale * childToParentFactor(anchorBox, nextScene.layout.width, nextScene.layout.height, contain));
     stack.push({
       scene: fromScene,
       anchorId,
@@ -580,7 +702,8 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
       holder: here,
       ghostSince: -Infinity,
       camera: fromCamera,
-      anchorBox: { x: anchorBox.x, y: anchorBox.y, size: anchorBox.width },
+      anchorBox: plainBox(anchorBox),
+      contain,
       entryScale: containScale,
     });
     here = newHolder<F>();
@@ -605,7 +728,7 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     // screen and one child world unit keeps its on-screen size, so the parent appears around the
     // child with nothing moving — and the child stays drawn, as the anchor's preview, fading out
     // behind the cloud as the zoom-out continues (`transition.ts`).
-    const k = childToParentFactor(anchorBox.size, fromScene.layout.width, fromScene.layout.height);
+    const k = childToParentFactor(anchorBox, fromScene.layout.width, fromScene.layout.height, frame.contain);
     const swapToParent = () => {
       const childGroupScreen = rig.worldToScreen(fromScene.layout.width / 2, fromScene.layout.height / 2);
       const parentScale = rig.camera.scale / k;
@@ -680,13 +803,13 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
       if (!anchorBox) return;
 
       const vp = rig.viewport;
-      const box = { x: anchorBox.x, y: anchorBox.y, size: anchorBox.width };
+      const box = plainBox(anchorBox);
       // The camera this scene would have been *entered* at, had the user arrived from above —
       // `cameraFillingBox` is the plan's own "entryScale from cameraFillingBox", mirroring exactly
       // what a real `enter()` computes from its own (real) anchor and from-camera.
       const syntheticCamera = cameraFillingBox(vp, box, ENTER_FILL_FRACTION);
-      const anchorScreenSize = box.size * syntheticCamera.scale;
-      const entryScale = clampScale((anchorScreenSize * CONTAIN_PADDING_FACTOR) / Math.max(current.layout.width, current.layout.height));
+      const contain = containFraction(parentStacked.scene, current.scene);
+      const entryScale = clampScale(syntheticCamera.scale * childToParentFactor(box, current.layout.width, current.layout.height, contain));
 
       const anchorNode = parentStacked.renderNodes.find((n) => n.id === anchorBox.id);
       stack.push({
@@ -697,6 +820,7 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
         ghostSince: performance.now(),
         camera: syntheticCamera,
         anchorBox: box,
+        contain,
         entryScale,
       });
       requestRedraw?.();
@@ -708,18 +832,17 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     }
   }
 
-  /** A node's on-screen size as a fraction of the viewport's smaller dimension. */
-  function fillOf(node: RenderNode): number {
+  /** How much of the viewport a node fills on screen (`fillFraction`). */
+  function fillOf(node: PlainBox): number {
     const vp = rig.viewport;
-    return (node.size * rig.camera.scale) / Math.min(vp.width, vp.height);
+    return fillFraction(node, rig.camera.scale, vp.width, vp.height);
   }
 
   /** Whether any of `node`'s box (in the current scene's world) is inside the viewport. */
   function isOnScreen(node: RenderNode): boolean {
     const vp = rig.viewport;
     const topLeft = rig.worldToScreen(node.x, node.y);
-    const span = node.size * rig.camera.scale;
-    return topLeft.x < vp.width && topLeft.x + span > 0 && topLeft.y < vp.height && topLeft.y + span > 0;
+    return topLeft.x < vp.width && topLeft.x + node.width * rig.camera.scale > 0 && topLeft.y < vp.height && topLeft.y + node.height * rig.camera.scale > 0;
   }
 
   /** Every drillable node of the current scene at least `minFill` big whose box is on screen at
@@ -741,13 +864,13 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
    *  follows where the user is looking, not whichever node's centre happens to be nearest. */
   function nodeAtScreenCentre(minFill: number): RenderNode | null {
     const vp = rig.viewport;
+    const middle = rig.screenToWorld(vp.width / 2, vp.height / 2);
     let best: RenderNode | null = null;
     let bestDistance = Infinity;
     for (const node of current.renderNodes) {
-      if (!node.drillable || fillOf(node) < minFill) continue;
-      const centre = rig.worldToScreen(node.x + node.size / 2, node.y + node.size / 2);
-      const distance = Math.hypot(centre.x - vp.width / 2, centre.y - vp.height / 2);
-      if (distance <= (node.size * rig.camera.scale) / 2 && distance < bestDistance) {
+      if (!node.drillable || fillOf(node) < minFill || !contains(node, middle.x, middle.y)) continue;
+      const distance = distanceToCentre(node, middle.x, middle.y);
+      if (distance < bestDistance) {
         best = node;
         bestDistance = distance;
       }
@@ -777,13 +900,6 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     if (rig.camera.scale <= entryScale * AUTO_LEAVE_SCALE_FRACTION) void leave(false);
   }
 
-  /** The node entered through, as drawn around the current scene: its footprint in this world. */
-  function anchorFootprint(frame: Frame<F>): { cx: number; cy: number; radius: number } {
-    const { width, height } = current.layout;
-    const box = parentBoxInChild(frame.anchorBox, frame.anchorBox, width, height);
-    return { cx: box.x + box.size / 2, cy: box.y + box.size / 2, radius: box.size / 2 };
-  }
-
   /** A sibling drawn around the current scene that can be entered from here, by id. */
   function ghostSibling(id: string): RenderNode | null {
     const frame = stack[stack.length - 1];
@@ -805,15 +921,18 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     if (!frame) return;
     const vp = rig.viewport;
     const middle = rig.screenToWorld(vp.width / 2, vp.height / 2);
-    const own = anchorFootprint(frame);
-    if (Math.hypot(middle.x - own.cx, middle.y - own.cy) <= own.radius) return;
+    const ghosts = ghostNodesFor(frame).nodes;
+    // The node entered through, as drawn around the current scene.
+    const own = ghosts.find((n) => n.id === frame.anchorId);
+    if (own && contains(own, middle.x, middle.y)) return;
 
     let target: RenderNode | null = null;
     let bestDistance = Infinity;
-    for (const node of ghostNodesFor(frame).nodes) {
+    for (const node of ghosts) {
       if (node.id === frame.anchorId || !node.drillable || node.focus === null || fillOf(node) < LATERAL_MIN_FILL) continue;
-      const distance = Math.hypot(middle.x - (node.x + node.size / 2), middle.y - (node.y + node.size / 2));
-      if (distance <= node.size / 2 && distance < bestDistance) {
+      if (!contains(node, middle.x, middle.y)) continue;
+      const distance = distanceToCentre(node, middle.x, middle.y);
+      if (distance < bestDistance) {
         target = node;
         bestDistance = distance;
       }
@@ -827,6 +946,35 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     if (animating || transitioning || !ghostSibling(id)) return;
     await leave(false);
     await enter(id, opts);
+  }
+
+  /**
+   * Double-clicking `id`, an item drawn as one of `parent`'s children in its place: enters `parent`
+   * where it is (nothing moves, the children already being where they will be), then the item
+   * itself when it has a scene of its own, or otherwise brings it to the middle of the view. So the
+   * scene you end in is the item's, not whichever is left in the middle. Resolves to what happened.
+   */
+  async function enterThrough(parent: PreviewParent, id: string): Promise<"entered" | "centred" | "none"> {
+    if (animating || transitioning) return "none";
+    if (parent.around) await enterSibling(parent.id, { approach: false });
+    else await enter(parent.id, { approach: false });
+    const node = current.renderNodes.find((n) => n.id === id);
+    if (!node) return "none";
+    if (!node.drillable) {
+      await centreOn(node);
+      return "centred";
+    }
+    await enter(id);
+    return current.key === keyOf(focusOf(node)) ? "entered" : "none";
+  }
+
+  /** Brings `node` to the middle of the view, zooming in by a double-click's usual step, but never
+   *  past where it fills the view, and never out. */
+  function centreOn(node: RenderNode): Promise<void> {
+    const vp = rig.viewport;
+    const fits = cameraFillingBox(vp, node, ENTER_FILL_FRACTION).scale;
+    const scale = clampScale(Math.max(rig.camera.scale, Math.min(rig.camera.scale * DOUBLE_TAP_ZOOM, fits)));
+    return tweenZoomToWorldPoint(APPROACH_MS, boxCentre(node), { x: vp.width / 2, y: vp.height / 2 }, scale);
   }
 
   /**
@@ -902,8 +1050,8 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
   function previewNodesFor(node: RenderNode, child: StackedScene<F>): RenderNode[] {
     const cached = previewNodeCache.get(node.id);
     if (cached && cached.host === current && cached.child === child) return cached.nodes;
-    const box = { x: node.x, y: node.y, size: node.size };
-    const nodes = child.renderNodes.map((n) => ({ ...n, ...childBoxInParent(n, box, child.layout.width, child.layout.height) }));
+    const contain = containFraction(current.scene, child.scene);
+    const nodes = child.renderNodes.map((n) => placed(n, childBoxInParent(n, node, child.layout.width, child.layout.height, contain)));
     previewNodeCache.set(node.id, { host: current, child, nodes });
     return nodes;
   }
@@ -912,7 +1060,7 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
   function ghostNodesFor(frame: Frame<F>): { nodes: RenderNode[]; byFocusKey: Map<string, RenderNode> } {
     if (ghostCache && ghostCache.frame === frame && ghostCache.child === current) return ghostCache;
     const { width, height } = current.layout;
-    const nodes = frame.scene.renderNodes.map((n) => ({ ...n, ...parentBoxInChild(n, frame.anchorBox, width, height) }));
+    const nodes = frame.scene.renderNodes.map((n) => placed(n, parentBoxInChild(n, frame.anchorBox, width, height, frame.contain)));
     const byFocusKey = new Map<string, RenderNode>();
     for (const n of nodes) if (n.focus !== null) byFocusKey.set(keyOf(focusOf(n)), n);
     ghostCache = { frame, child: current, nodes, byFocusKey };
@@ -925,11 +1073,10 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     const cached = ghostPreviewCache.get(sibling.id);
     if (cached && cached.frame === frame && cached.host === current && cached.child === child) return cached.nodes;
     const original = frame.scene.renderNodes.find((n) => n.id === sibling.id)!;
-    const box = { x: original.x, y: original.y, size: original.size };
     const { width, height } = current.layout;
     const nodes = child.renderNodes.map((n) => {
-      const inParent = childBoxInParent(n, box, child.layout.width, child.layout.height);
-      return { ...n, ...parentBoxInChild(inParent, frame.anchorBox, width, height) };
+      const inParent = childBoxInParent(n, original, child.layout.width, child.layout.height, containFraction(frame.scene.scene, child.scene));
+      return placed(n, parentBoxInChild(inParent, frame.anchorBox, width, height, frame.contain));
     });
     ghostPreviewCache.set(sibling.id, { frame, host: current, child, nodes });
     return nodes;
@@ -952,12 +1099,10 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
    * continuous, so the swap itself changes nothing on screen.
    */
   function transitionView(now = performance.now()): TransitionView {
-    const vp = rig.viewport;
-    const minDim = Math.min(vp.width, vp.height);
-    const scale = rig.camera.scale;
     const under: TransitionLayer[] = [];
     let over: TransitionLayer | null = null;
     let arriving = false;
+    const passThrough = new Set<string>();
 
     // Every node with a loaded preview thins by its own size, on screen or not — the same rule the
     // ghost applies to the parent's nodes after entry, so the two agree for every node, not just
@@ -972,7 +1117,17 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
       if (reveal.arrival < 1) arriving = true;
       if (reveal.cloud < 1) cloudById.set(node.id, reveal.cloud);
       if (onScreen.has(node.id) && reveal.visible > 0.002) {
-        under.push({ nodes: previewNodesFor(node, entry.scene), edges: entry.scene.renderEdges, alpha: () => reveal.visible, decorated: true });
+        // Once a solid item's children show more than it does, they are what the pointer finds. (A
+        // cloud stays the target however far it thins: it is a haze the children show through.)
+        const handedOver = isSolid(node) && reveal.visible > reveal.cloud;
+        if (handedOver) passThrough.add(node.id);
+        under.push({
+          nodes: previewNodesFor(node, entry.scene),
+          edges: entry.scene.renderEdges,
+          alpha: () => reveal.visible,
+          decorated: true,
+          ...(handedOver ? { pointable: () => true, via: { id: node.id, around: false } } : {}),
+        });
       }
     }
     let currentAlpha: ((node: RenderNode) => number) | null = cloudById.size > 0 ? (n) => cloudById.get(n.id) ?? 1 : null;
@@ -981,31 +1136,49 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     if (frame) {
       const arrival = Math.min(1, Math.max(0, (now - frame.ghostSince) / PREVIEW_ARRIVAL_MS));
       if (arrival < 1) arriving = true;
-      const maxDim = Math.max(current.layout.width, current.layout.height);
-      const fill = (maxDim * scale) / (CHILD_CONTAIN_FRACTION * minDim);
+      // The anchor's own fill, as drawn around this scene: continuous with its fill before the swap.
+      const fill = fillOf(parentBoxInChild(frame.anchorBox, frame.anchorBox, current.layout.width, current.layout.height, frame.contain));
       const visible = childAlpha(fill);
       // A climb's ghost fades in from "no ghost": the child stays fully visible meanwhile.
       const childVisible = 1 - arrival * (1 - visible);
 
       const ghost = ghostNodesFor(frame);
       const ghostAlpha = new Map<string, number>([[frame.anchorId, cloudAlpha(fill, visible, frame.anchorSolid) * arrival]]);
+      // Solid siblings whose children now show more than they do: the pointer finds the children.
+      const handedOver = new Set<string>();
       for (const [key, entry] of frame.holder.previews) {
         const sibling = ghost.byFocusKey.get(key);
         if (!sibling || sibling.id === frame.anchorId) continue;
-        const reveal = revealFor(sibling, (sibling.size * scale) / minDim, entry, now);
+        const reveal = revealFor(sibling, fillOf(sibling), entry, now);
         ghostAlpha.set(sibling.id, reveal.cloud * arrival);
         if (isOnScreen(sibling) && reveal.visible > 0.002) {
-          under.push({ nodes: ghostPreviewNodesFor(frame, sibling, entry.scene), edges: entry.scene.renderEdges, alpha: () => reveal.visible * arrival, decorated: true });
+          const children = isSolid(sibling) && reveal.visible > reveal.cloud;
+          if (children) handedOver.add(sibling.id);
+          under.push({
+            nodes: ghostPreviewNodesFor(frame, sibling, entry.scene),
+            edges: entry.scene.renderEdges,
+            alpha: () => reveal.visible * arrival,
+            decorated: true,
+            ...(children ? { pointable: () => true, via: { id: sibling.id, around: true } } : {}),
+          });
         }
       }
-      // Every sibling can be pointed at — however far it has thinned to reveal its children — but
-      // never the dissolving cloud of the scene you're in, which covers everything inside it.
-      over = { nodes: ghost.nodes, edges: frame.scene.renderEdges, alpha: (n) => ghostAlpha.get(n.id) ?? arrival, decorated: true, pointable: (n) => n.id !== frame.anchorId };
+      // Every sibling on show can be pointed at, unless it is solid and its children show more than
+      // it does (then they are pointed at instead), but never the dissolving cloud of the scene
+      // you're in, which covers everything inside it.
+      const ghostAlphaOf = (n: RenderNode) => ghostAlpha.get(n.id) ?? arrival;
+      over = {
+        nodes: ghost.nodes,
+        edges: frame.scene.renderEdges,
+        alpha: ghostAlphaOf,
+        decorated: true,
+        pointable: (n) => n.id !== frame.anchorId && !handedOver.has(n.id) && ghostAlphaOf(n) > MIN_POINTABLE_ALPHA,
+      };
       const inner = currentAlpha;
       currentAlpha = inner ? (n) => childVisible * inner(n) : () => childVisible;
     }
 
-    return { under, currentAlpha, over, animating: arriving };
+    return { under, currentAlpha, passThrough, over, animating: arriving };
   }
 
   function breadcrumb(): { key: string; heading: string }[] {
@@ -1029,6 +1202,7 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     schedulePreviews,
     maybeMoveAcross,
     enterSibling,
+    enterThrough,
     ghostSibling,
     transitionView,
     breadcrumb,

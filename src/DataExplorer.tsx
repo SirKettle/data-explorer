@@ -24,6 +24,7 @@ import {
   resolveOptions,
   type ExplorerBackground,
   type ExplorerCustomViews,
+  type ExplorerLimits,
   type ExplorerEdges,
   type ExplorerEffects,
   type ExplorerOptions,
@@ -191,6 +192,10 @@ export interface DataExplorerProps<F, D = unknown> {
   renderers?: () => Promise<RenderersModule | { default: RenderersModule }>;
   /** US071 — how many items custom renderers may draw at once. */
   customViews?: ExplorerCustomViews;
+  /** How far the viewer may pan and zoom, so the scene cannot be lost off screen or shrunk to
+   *  nothing. Each limit is on by default; `false` turns one off. A change applies from the next
+   *  move of the camera. */
+  limits?: ExplorerLimits;
   /** Shows a small overlay of draw time, frame rate and pool sizes. Read once, at mount. */
   stats?: boolean;
   /** US070 Step 4 — the canvas colours. Pass a new object when they change (a light/dark or
@@ -252,6 +257,7 @@ export function DataExplorer<F, D = unknown>({
   textures,
   renderers,
   customViews,
+  limits,
   stats: statsProp = false,
   renderLoading = defaultLoading,
   renderError = defaultError,
@@ -302,7 +308,7 @@ export function DataExplorer<F, D = unknown>({
   const setRampRef = useRef<((ramp: RampColours) => void) | null>(null);
   // US071 — resolved, and compared by value, so an inline `effects={{ … }}` does not redraw on
   // every parent render. Applied live through `setOptionsRef`, the same path as the palette.
-  const resolvedOptions = useResolvedOptions({ background, effects, edges, textures, customViews });
+  const resolvedOptions = useResolvedOptions({ background, effects, edges, textures, customViews, limits });
   const renderersAtMount = useRef(renderers);
   const optionsRef = useRef(resolvedOptions);
   optionsRef.current = resolvedOptions;
@@ -419,6 +425,7 @@ export function DataExplorer<F, D = unknown>({
           }, SETTLE_DEBOUNCE_MS);
         },
         requestRedraw: requestDraw,
+        limits: () => optionsRef.current.limits,
         onNavigate: ({ from, to, direction }) => {
           const { onLeave, onEnter } = eventsRef.current;
           onLeave?.({ ...sceneInfo<F, D>(from), direction });
@@ -579,6 +586,15 @@ export function DataExplorer<F, D = unknown>({
           onDoubleTap: (point) => {
             const node = renderer.hitTest(rig.camera, point);
             if (node && activationCancelled(node, "pointer")) return;
+            // A child drawn in its parent's place: enter the parent where it is, then the child if
+            // it has a scene of its own, or otherwise bring it to the middle of the view.
+            const parent = node ? renderer.previewParentOf(node) : null;
+            if (node && parent) {
+              void stack.enterThrough(parent, node.id).then((result) => {
+                if (result === "none") rig.zoomAtScreen(point, 2.5);
+              });
+              return;
+            }
             if (node?.drillable && stack.nodeById(node.id)) {
               void stack.enter(node.id);
               return;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { radialFocusLayout, sunflowerLayout, sunflowerLayoutAppend, type ExplorerBox } from "./layout";
+import { fixedLayout, radialFocusLayout, sunflowerLayout, sunflowerLayoutAppend, type ExplorerBox } from "./layout";
 import type { ExplorerScene } from "./types";
 
 /** Plain `bun test`, no DOM, no network (Step 3's exit criteria). */
@@ -345,3 +345,42 @@ describe("scattered spiral: sized up front, denser in the middle, soft at the ed
   });
 });
 
+
+describe("fixedLayout", () => {
+  const at = (id: string, x: number, y: number, width: number, height: number) => ({ ...node(id), box: { x, y, width, height } });
+
+  test("draws every item at its own box, moved so the scene's bounds start at the origin and scaled so its longer side is 1,000", () => {
+    const scene: ExplorerScene = {
+      id: "fixed",
+      heading: "Fixed",
+      layout: "fixed",
+      bounds: { x: 100, y: 50, width: 400, height: 200 },
+      clusters: [{ ...cluster("wide", 9), box: { x: 100, y: 50, width: 300, height: 100 } }],
+      nodes: [at("small", 450, 200, 10, 40), node("unplaced")],
+      edges: [],
+    };
+    const layout = fixedLayout(scene);
+    expect(layout.width).toBe(1000);
+    expect(layout.height).toBe(500);
+    expect(layout.boxes).toEqual([
+      { id: "wide", kind: "cluster", x: 0, y: 0, width: 750, height: 250 },
+      { id: "small", kind: "node", x: 875, y: 375, width: 25, height: 100 },
+    ]);
+  });
+
+  test("without bounds, the extent is the smallest rectangle round the items", () => {
+    const layout = fixedLayout({ id: "f", heading: "F", layout: "fixed", clusters: [], nodes: [at("a", -20, 10, 20, 20), at("b", 30, 0, 10, 50)], edges: [] });
+    // 60 × 50, scaled by 1000 / 60.
+    expect(layout.width).toBeCloseTo(1000);
+    expect(layout.height).toBeCloseTo(50 * (1000 / 60));
+    expect(layout.boxes.map((b) => [b.x, b.y].map((n) => +n.toFixed(6)))).toEqual([
+      [0, +((10 * 1000) / 60).toFixed(6)],
+      [+((50 * 1000) / 60).toFixed(6), 0],
+    ]);
+  });
+
+  test("ignores weight: the sizes are the ones given", () => {
+    const layout = fixedLayout({ id: "f", heading: "F", layout: "fixed", clusters: [], nodes: [{ ...at("a", 0, 0, 5, 5), weight: 1000 }, { ...at("b", 5, 0, 50, 50), weight: 1 }], edges: [] });
+    expect(layout.boxes[1]!.width / layout.boxes[0]!.width).toBeCloseTo(10);
+  });
+});

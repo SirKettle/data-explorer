@@ -7,6 +7,7 @@ import {
   clampScale,
   fitCamera,
   lerpCamera,
+  limitCamera,
   MAX_SCALE,
   MIN_SCALE,
   screenToWorld,
@@ -81,15 +82,23 @@ describe("cameraPlacing / cameraFillingBox", () => {
   });
 
   test("cameraFillingBox centres the box and scales it to fillFraction of the viewport's smaller dimension", () => {
-    const box = { x: 100, y: 100, size: 50 };
+    const box = { x: 100, y: 100, width: 50, height: 50 };
     const camera = cameraFillingBox(viewport, box, 0.9);
     const centre = boxCentre(box);
     expect(camera.x).toBe(centre.x);
     expect(camera.y).toBe(centre.y);
     // The box, rendered under this camera, spans roughly fillFraction of the smaller viewport side.
-    const spanPx = box.size * camera.scale;
+    const spanPx = box.width * camera.scale;
     expect(spanPx).toBeLessThanOrEqual(Math.min(viewport.width, viewport.height));
     expect(spanPx / Math.min(viewport.width, viewport.height)).toBeCloseTo(0.9 / 1.05, 2);
+  });
+
+  test("cameraFillingBox fits a rectangular box by whichever axis is tighter", () => {
+    const tall = { x: 0, y: 0, width: 10, height: 400 };
+    const camera = cameraFillingBox(viewport, tall, 0.9);
+    expect(camera.y).toBe(200);
+    expect(tall.height * camera.scale).toBeCloseTo((viewport.height * 0.9) / 1.05, 2);
+    expect(tall.width * camera.scale).toBeLessThan(viewport.width);
   });
 });
 
@@ -149,5 +158,46 @@ describe("CameraRig", () => {
     const r = rig({ x: 10, y: 20, scale: 1.5 });
     expect(r.worldToScreen(30, 40)).toEqual(worldToScreen(r.camera, viewport, 30, 40));
     expect(r.screenToWorld(300, 200)).toEqual(screenToWorld(r.camera, viewport, 300, 200));
+  });
+});
+
+describe("limitCamera", () => {
+  // viewport is 800 × 600; a scene 1,000 wide and 500 tall.
+  const limits = { bounds: { x: 0, y: 0, width: 1000, height: 500 }, keep: 0.25, minScale: 0.2, maxScale: 4 };
+
+  test("clamps the scale", () => {
+    expect(limitCamera({ x: 500, y: 250, scale: 0.01 }, viewport, limits).scale).toBe(0.2);
+    expect(limitCamera({ x: 500, y: 250, scale: 9 }, viewport, limits).scale).toBe(4);
+  });
+
+  test("leaves a camera that shows enough of the scene alone", () => {
+    expect(limitCamera({ x: 500, y: 250, scale: 1 }, viewport, limits)).toEqual({ x: 500, y: 250, scale: 1 });
+  });
+
+  test("stops the scene being panned out of view: it keeps covering a quarter of the view on each axis", () => {
+    // 0.25 × 800 = 200 px across must stay covered. Panned far right of the scene:
+    const panned = limitCamera({ x: 5000, y: 250, scale: 1 }, viewport, limits);
+    const rightEdge = worldToScreen(panned, viewport, 1000, 0).x;
+    expect(rightEdge).toBeCloseTo(200, 6);
+    // And 0.25 × 600 = 150 px down.
+    const below = limitCamera({ x: 500, y: -4000, scale: 1 }, viewport, limits);
+    expect(600 - worldToScreen(below, viewport, 0, 0).y).toBeCloseTo(150, 6);
+  });
+
+  test("a scene smaller than that must stay wholly in view", () => {
+    const small = { ...limits, bounds: { x: 0, y: 0, width: 50, height: 50 } };
+    const panned = limitCamera({ x: -5000, y: 25, scale: 1 }, viewport, small);
+    expect(worldToScreen(panned, viewport, 0, 0).x).toBeCloseTo(800 - 50, 6);
+  });
+
+  test("no pan limit when keep is null", () => {
+    expect(limitCamera({ x: 5000, y: 250, scale: 1 }, viewport, { ...limits, keep: null }).x).toBe(5000);
+  });
+
+  test("the rig applies its limit on every set", () => {
+    const r = new CameraRig(() => viewport, { x: 500, y: 250, scale: 1 });
+    r.limit = (camera) => limitCamera(camera, viewport, limits);
+    r.panByScreen(-100_000, 0);
+    expect(worldToScreen(r.camera, viewport, 1000, 0).x).toBeCloseTo(200, 6);
   });
 });

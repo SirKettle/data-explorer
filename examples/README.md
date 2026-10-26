@@ -1,7 +1,8 @@
 # Examples
 
-Five small apps built on `@thirkettle/data-explorer`, each with made-up data and nothing else
-underneath, plus a stress page for measuring. Each shows a different part of the contract. The
+Six small apps built on `@thirkettle/data-explorer`, plus a stress page for measuring. Five have
+made-up data and nothing else underneath; the world map draws real country shapes, with
+`world-atlas` and `d3-geo` (development dependencies, used by no other part of the package). Each shows a different part of the contract. The
 [documentation site](https://sirkettle.github.io/data-explorer/examples/) runs each one beside its
 source.
 
@@ -19,6 +20,7 @@ step. If a page still shows old code after an edit, restart the server.
 | [A streaming atlas](./atlas/)                | `/atlas`        | The optional members: `loadSceneStreaming` with `expectedItemCount` (countries arrive in pages), `subscribeToInvalidation` + `refreshScene` (mark a country visited and its ring appears in place), a custom `ramp` (population density), and a live `palette` switch between light and dark. |
 | [A solar system](./solar-system/)            | `/solar-system` | Item `texture`s cropped to their disc, a `texture` from a host with no CORS header (`github.com/<user>.png`: the fallback and `onTextureError`), custom renderers by item `kind`, `edges` as orbits, a `pulse`, and an image `background`. |
 | [An org chart](./org-chart/)                 | `/org-chart`    | A tree (departments, teams, people) into a radial person view whose manager and reports are drawn edges you can walk. Written from the docs alone, as US072's cold-start test, with a headless `smoke.test.ts`. |
+| [A world map](./world-map/)                  | `/world-map`    | **Fixed** scenes of `region`s: Natural Earth's 110m countries (`world-atlas`), projected once with `d3-geo` into one set of map units. Continents enter to their countries, which land exactly where the continent was drawn; outlines with holes (Lesotho in South Africa) and `labelAt`. |
 | [Stress test](./stress/)                     | `/stress`       | One big scene, its size and styles in the query string, for reading draw cost off `?stats=1`. |
 
 ## Layout
