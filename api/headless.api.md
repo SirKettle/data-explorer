@@ -48,7 +48,7 @@ export function createSceneStack<F>(input: SceneStackDeps<F>): {
     enterSibling: (id: string, opts?: {
         approach?: boolean;
     }) => Promise<void>;
-    enterThrough: (parent: PreviewParent, id: string) => Promise<boolean>;
+    enterThrough: (parent: PreviewParent, id: string) => Promise<"entered" | "centred" | "none">;
     ghostSibling: (id: string) => RenderNode | null;
     transitionView: (now?: number) => TransitionView;
     breadcrumb: () => {
@@ -376,6 +376,12 @@ export function presenceLook(presence: number): {
 export const PREVIEW_RETRY_MS = 30000;
 
 // @public
+export interface PreviewParent {
+    around: boolean;
+    id: string;
+}
+
+// @public
 export function rampColor(t: number, ramp?: RampColours): number;
 
 // @public
@@ -626,9 +632,5 @@ export function windowed<T>(items: readonly T[], limit: number): {
     shown: T[];
     truncated: ExplorerTruncation | null;
 };
-
-// Warnings were encountered during analysis:
-//
-// temp/dts/camera/scene-stack.d.ts:200:5 - (ae-forgotten-export) The symbol "PreviewParent" needs to be exported by the entry point headless.d.ts
 
 ```

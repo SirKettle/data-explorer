@@ -583,18 +583,38 @@ describe("fixed scenes", () => {
     expect(over.pointable!(over.nodes.find((n) => n.id === "east")!)).toBe(false);
   });
 
-  test("entering a place through its region: the region where it is, nothing moving", async () => {
-    const { rig, stack, s } = await insideEast();
-    const before = rig.worldToScreen(300 * s, 150 * s); // q's corner
-    // q has no scene of its own, so only its region is entered.
-    expect(await stack.enterThrough({ id: "east", around: false }, "q")).toBe(false);
+  test("double-clicking a place through its region enters the region, then centres the place", async () => {
+    // Centring animates the camera: every frame lands at the end of the animation.
+    const saved = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => setTimeout(() => cb(performance.now() + 60_000), 0)) as unknown as typeof requestAnimationFrame;
+    try {
+      await centresThePlace();
+    } finally {
+      globalThis.requestAnimationFrame = saved;
+    }
+  });
+
+  async function centresThePlace() {
+    const { rig, stack } = await insideEast();
+    const before = rig.camera.scale;
+    // q has no scene of its own: its region is entered, and q brought to the middle of the view.
+    expect(await stack.enterThrough({ id: "east", around: false }, "q")).toBe("centred");
     expect(stack.current.key).toBe("east");
     const q = stack.current.renderNodes.find((n) => n.id === "q")!;
-    expect(rig.worldToScreen(q.x, q.y).x).toBeCloseTo(before.x, 6);
-    // And a place in the neighbour round it: across into the neighbour.
-    expect(await stack.enterThrough({ id: "west", around: true }, "r")).toBe(false);
+    const middle = rig.worldToScreen(q.x + q.width / 2, q.y + q.height / 2);
+    expect(middle.x).toBeCloseTo(viewport.width / 2, 6);
+    expect(middle.y).toBeCloseTo(viewport.height / 2, 6);
+    // Zoomed in, but never past where q fills the view.
+    expect(rig.camera.scale).toBeGreaterThan(before);
+    expect(Math.max((q.width * rig.camera.scale) / viewport.width, (q.height * rig.camera.scale) / viewport.height)).toBeLessThanOrEqual(0.92 / 1.05 + 1e-9);
+    // So the middle of the view is in east: nothing moves you back across.
+    stack.maybeMoveAcross();
+    expect(stack.current.key).toBe("east");
+
+    // A place in the neighbour round it: across into the neighbour, then the place centred.
+    expect(await stack.enterThrough({ id: "west", around: true }, "r")).toBe("centred");
     expect(stack.current.key).toBe("west");
-  });
+  }
 
   test("entering and leaving keep a place where it was on screen", async () => {
     const scenes = world();

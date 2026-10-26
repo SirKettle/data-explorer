@@ -11,6 +11,7 @@ export {
   createSceneStack,
   PREVIEW_RETRY_MS,
   type NavigationDirection,
+  type PreviewParent,
   type RenderEdge,
   type RenderNode,
   type SceneStack,

@@ -215,6 +215,8 @@ interface Frame<F> {
 }
 
 const ENTER_FILL_FRACTION = 0.92;
+/** How far a double-click zooms in on an item with no scene of its own (as `DataExplorer` does). */
+const DOUBLE_TAP_ZOOM = 2.5;
 const AUTO_ENTER_SIZE_FRACTION = 0.85;
 const AUTO_LEAVE_SCALE_FRACTION = 0.7;
 /** Step 3 — the smallest a sibling can be on screen and still be moved into sideways: the size a
@@ -901,17 +903,33 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     await enter(id, opts);
   }
 
-  /** Enters `id`, an item drawn as one of `parent`'s children in its place: `parent` first, where
-   *  it is (nothing moves, the children already being where they will be), then the item itself,
-   *  when it can be entered. Resolves to whether the item itself was entered. */
-  async function enterThrough(parent: PreviewParent, id: string): Promise<boolean> {
-    if (animating || transitioning) return false;
+  /**
+   * Double-clicking `id`, an item drawn as one of `parent`'s children in its place: enters `parent`
+   * where it is (nothing moves, the children already being where they will be), then the item
+   * itself when it has a scene of its own, or otherwise brings it to the middle of the view. So the
+   * scene you end in is the item's, not whichever is left in the middle. Resolves to what happened.
+   */
+  async function enterThrough(parent: PreviewParent, id: string): Promise<"entered" | "centred" | "none"> {
+    if (animating || transitioning) return "none";
     if (parent.around) await enterSibling(parent.id, { approach: false });
     else await enter(parent.id, { approach: false });
     const node = current.renderNodes.find((n) => n.id === id);
-    if (!node?.drillable) return false;
+    if (!node) return "none";
+    if (!node.drillable) {
+      await centreOn(node);
+      return "centred";
+    }
     await enter(id);
-    return current.key === keyOf(focusOf(node));
+    return current.key === keyOf(focusOf(node)) ? "entered" : "none";
+  }
+
+  /** Brings `node` to the middle of the view, zooming in by a double-click's usual step, but never
+   *  past where it fills the view, and never out. */
+  function centreOn(node: RenderNode): Promise<void> {
+    const vp = rig.viewport;
+    const fits = cameraFillingBox(vp, node, ENTER_FILL_FRACTION).scale;
+    const scale = clampScale(Math.max(rig.camera.scale, Math.min(rig.camera.scale * DOUBLE_TAP_ZOOM, fits)));
+    return tweenZoomToWorldPoint(APPROACH_MS, boxCentre(node), { x: vp.width / 2, y: vp.height / 2 }, scale);
   }
 
   /**
