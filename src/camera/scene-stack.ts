@@ -152,7 +152,8 @@ export interface TransitionLayer {
   alpha: (node: RenderNode) => number;
   /** Whether the layer's nodes may carry labels/marks. */
   decorated: boolean;
-  /** Which of the layer's nodes can be hovered, selected and double-clicked — absent means none. */
+  /** Which of the layer's nodes can be hovered, selected and double-clicked — absent means none.
+   *  It decides visibility too: the renderer points at exactly these, however faint. */
   pointable?: (node: RenderNode) => boolean;
   /** US071 — the layer's scene's edges, drawn at the lower alpha of their two ends. */
   edges?: readonly RenderEdge[];
@@ -219,6 +220,9 @@ const MAX_PREVIEW_LOADS = 2;
  *  scheduled after every draw, so without this a failure (a `429` most of all) was retried on the
  *  very next frame, for as long as the node stayed on screen — hundreds of requests a minute. */
 export const PREVIEW_RETRY_MS = 30_000;
+
+/** A ghost fainter than this, with none of its children showing either, is not there to point at. */
+const MIN_POINTABLE_ALPHA = 0.01;
 
 const APPROACH_MS = 500;
 const LEAVE_APPROACH_MS = 300;
@@ -1039,6 +1043,9 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
 
       const ghost = ghostNodesFor(frame);
       const ghostAlpha = new Map<string, number>([[frame.anchorId, cloudAlpha(fill, visible, frame.anchorSolid) * arrival]]);
+      // Siblings whose children are showing in their place: a solid sibling washes out completely
+      // as they appear, but it is still what the viewer is looking at.
+      const revealing = new Set<string>();
       for (const [key, entry] of frame.holder.previews) {
         const sibling = ghost.byFocusKey.get(key);
         if (!sibling || sibling.id === frame.anchorId) continue;
@@ -1046,11 +1053,20 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
         ghostAlpha.set(sibling.id, reveal.cloud * arrival);
         if (isOnScreen(sibling) && reveal.visible > 0.002) {
           under.push({ nodes: ghostPreviewNodesFor(frame, sibling, entry.scene), edges: entry.scene.renderEdges, alpha: () => reveal.visible * arrival, decorated: true });
+          revealing.add(sibling.id);
         }
       }
-      // Every sibling can be pointed at — however far it has thinned to reveal its children — but
-      // never the dissolving cloud of the scene you're in, which covers everything inside it.
-      over = { nodes: ghost.nodes, edges: frame.scene.renderEdges, alpha: (n) => ghostAlpha.get(n.id) ?? arrival, decorated: true, pointable: (n) => n.id !== frame.anchorId };
+      // Every sibling on show can be pointed at — itself, or its children in its place, however far
+      // it has thinned to reveal them — but never the dissolving cloud of the scene you're in, which
+      // covers everything inside it.
+      const ghostAlphaOf = (n: RenderNode) => ghostAlpha.get(n.id) ?? arrival;
+      over = {
+        nodes: ghost.nodes,
+        edges: frame.scene.renderEdges,
+        alpha: ghostAlphaOf,
+        decorated: true,
+        pointable: (n) => n.id !== frame.anchorId && (ghostAlphaOf(n) > MIN_POINTABLE_ALPHA || revealing.has(n.id)),
+      };
       const inner = currentAlpha;
       currentAlpha = inner ? (n) => childVisible * inner(n) : () => childVisible;
     }

@@ -504,6 +504,7 @@ describe("fixed scenes", () => {
     return {
       root: { id: "world", heading: "World", layout: "fixed", clusters: [region("east", 0), region("west", 400)], nodes: [], edges: [] },
       east: { id: "east", heading: "East", layout: "fixed", bounds: { x: 0, y: 0, width: 400, height: 200 }, clusters: [], nodes: [place("p", 0, 0), place("q", 300, 150)], edges: [] },
+      west: { id: "west", heading: "West", layout: "fixed", bounds: { x: 400, y: 0, width: 400, height: 200 }, clusters: [], nodes: [place("r", 400, 0), place("t", 700, 150)], edges: [] },
     };
   }
 
@@ -541,6 +542,29 @@ describe("fixed scenes", () => {
     expect(p.labelAt).toEqual({ x: 0.25, y: 0.2 });
     // A square ignores both.
     expect(stack.transitionView(Infinity).under[0]!.nodes.find((n) => n.id === "q")).toMatchObject({ outline: null, labelAt: null });
+  });
+
+  test("a solid neighbour washed out to show its own children in its place can still be pointed at", async () => {
+    const scenes = world();
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    const s = stack.current.layout.width / 800;
+    // Both regions big enough to load their children: they reveal them in their place.
+    rig.set({ x: 400 * s, y: 100 * s, scale: 0.75 });
+    stack.schedulePreviews();
+    await flush();
+    rig.set({ x: 200 * s, y: 100 * s, scale: 1.4 });
+    await stack.enter("east", { approach: false });
+
+    const view = stack.transitionView(Infinity);
+    const over = view.over!;
+    const west = over.nodes.find((n) => n.id === "west")!;
+    // West itself has washed out completely: its children are what shows.
+    expect(over.alpha(west)).toBeLessThan(0.01);
+    expect(view.under.some((layer) => layer.nodes.some((n) => n.id === "r"))).toBe(true);
+    // But it is still what the viewer is looking at, so it can be hovered and entered.
+    expect(over.pointable!(west)).toBe(true);
+    // Never the region you are in.
+    expect(over.pointable!(over.nodes.find((n) => n.id === "east")!)).toBe(false);
   });
 
   test("entering and leaving keep a place where it was on screen", async () => {

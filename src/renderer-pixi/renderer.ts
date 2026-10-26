@@ -994,7 +994,9 @@ export async function createRenderer(
     if (transition?.over) for (const node of transition.over.nodes) drawNode(node, transition.over.alpha(node), transition.over.decorated, "o");
     customViews.end();
     const over = transition?.over;
-    around = over?.pointable ? over.nodes.filter((node) => over.pointable!(node) && over.alpha(node) > MIN_DRAWN_ALPHA) : [];
+    // The layer says what can be pointed at, faint or not: a solid sibling fully washed out to show
+    // its children in its place is still there to point at.
+    around = over?.pointable ? over.nodes.filter((node) => over.pointable!(node)) : [];
     aroundById = new Map(around.map((node) => [node.id, node]));
 
     for (let i = spriteIndex; i < spritePool.length; i++) spritePool[i]!.visible = false;
