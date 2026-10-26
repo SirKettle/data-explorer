@@ -639,3 +639,51 @@ describe("fixed scenes", () => {
     expect(rig.worldToScreen(300 * s, 150 * s).x).toBeCloseTo(before.x, 6);
   });
 });
+
+describe("pan and zoom limits", () => {
+  const limits = { pan: 0.5, zoomOut: 0.5, zoomIn: 2 };
+
+  function limited(scenes: Record<string, Scene>, root: Scene) {
+    const rig = new CameraRig(() => viewport, { x: 0, y: 0, scale: 1 });
+    const stack = createSceneStack({ rig, source: fakeSource(scenes), initialFocus: null, initialScene: root, applyScene: () => {}, limits: () => limits });
+    return { rig, stack };
+  }
+
+  test("at the top, the scene cannot be zoomed out below half its fitted size, nor panned away", () => {
+    const root = overview({ groupA: 1000, groupB: 1000 });
+    const { rig, stack } = limited({ root }, root);
+    const { width, height } = stack.current.layout;
+    const fitted = Math.min((viewport.width * 0.85) / width, (viewport.height * 0.85) / height);
+    rig.set({ x: width / 2, y: height / 2, scale: fitted * 0.01 });
+    expect(rig.camera.scale).toBeCloseTo(fitted * 0.5, 9);
+    rig.panByScreen(-100_000, 0);
+    // Half the view's width stays covered, or all of the scene where it is smaller than that.
+    expect(rig.worldToScreen(width, 0).x).toBeGreaterThanOrEqual(Math.min(0.5 * viewport.width, width * rig.camera.scale) - 1e-6);
+  });
+
+  test("zooming in stops at twice the zoom at which the smallest item fills the view", () => {
+    const root = overview({ groupA: 1000, groupB: 10 });
+    const { rig, stack } = limited({ root }, root);
+    const smallest = Math.min(...stack.current.renderNodes.map((n) => n.width));
+    rig.set({ ...rig.camera, scale: 1e9 });
+    expect(rig.camera.scale).toBeCloseTo(2 * Math.min(viewport.width, viewport.height) / smallest, 6);
+  });
+
+  test("inside a scene, the scene drawn round it counts: the viewer can pan across to a neighbour", async () => {
+    const root = overview({ groupA: 1000, groupB: 1000 });
+    const scenes = { root, groupA: groupScene("groupA", ["itemX", "itemY"]) };
+    const { rig, stack } = limited(scenes, root);
+    const a = stack.current.layout.boxes.find((b) => b.id === "groupA")!;
+    rig.set({ x: a.x + a.width / 2, y: a.y + a.width / 2, scale: (0.9 * Math.min(viewport.width, viewport.height)) / a.width });
+    await stack.enter("groupA", { approach: false });
+    expect(stack.current.key).toBe("groupA");
+    // groupB, round it, is where the middle of the view may go.
+    const b = stack.transitionView(Infinity).over!.nodes.find((n) => n.id === "groupB")!;
+    rig.set({ ...rig.camera, x: b.x + b.width / 2, y: b.y + b.height / 2 });
+    expect(rig.camera.x).toBeCloseTo(b.x + b.width / 2, 6);
+    // And no zoom-out limit inside a scene: zooming out leaves it instead.
+    const scale = rig.camera.scale * 0.01;
+    rig.set({ ...rig.camera, scale });
+    expect(rig.camera.scale).toBeCloseTo(scale, 9);
+  });
+});

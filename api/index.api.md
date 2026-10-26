@@ -25,6 +25,7 @@ export interface DataExplorerProps<F, D = unknown> {
     edges?: ExplorerEdges;
     effects?: ExplorerEffects;
     focus: F | null;
+    limits?: ExplorerLimits;
     onBackgroundClick?: (event: ExplorerBackgroundClickEvent) => void;
     onCameraChange?: (camera: ExplorerCameraEvent) => void;
     onEnter?: (event: ExplorerSceneEvent<F, D>) => void;
@@ -208,6 +209,13 @@ export interface ExplorerGridTileModule {
 export type ExplorerItem<F = unknown, D = unknown> = ExplorerNode<F, D> | ExplorerCluster<F, D>;
 
 // @public
+export interface ExplorerLimits {
+    pan?: number | false;
+    zoomIn?: number | false;
+    zoomOut?: number | false;
+}
+
+// @public
 export interface ExplorerNode<F = unknown, D = unknown> {
     box?: ExplorerRect | null;
     color?: ExplorerColour | null;
@@ -235,6 +243,7 @@ export interface ExplorerOptions {
     customViews?: ExplorerCustomViews;
     edges?: ExplorerEdges;
     effects?: ExplorerEffects;
+    limits?: ExplorerLimits;
     textures?: ExplorerTextures;
 }
 

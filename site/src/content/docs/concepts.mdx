@@ -60,6 +60,17 @@ says. `parentOf` matters when they arrived another way, such as a deep link. The
 stack of the scenes the viewer entered and never walks your data, so a graph with cycles costs only
 the scenes actually visited.
 
+### Keeping the scene in view
+
+The **`limits`** prop stops the viewer losing the scene: panning it off screen, shrinking it to a
+speck, or zooming into empty space. Each limit is on by default, and `false` turns one off:
+
+| Limit | Default | Means |
+| --- | --- | --- |
+| `pan` | `0.5` | The scene keeps covering at least this share of the view's width and of its height, or all of itself where it is smaller. Inside a scene, the scene drawn around it counts, so the viewer can still pan across into a neighbour. |
+| `zoomOut` | `0.5` | The top scene shrinks to no less than this share of the size that fits it. Deeper scenes have no such limit: zooming out of one leaves it. At most `0.65`, so zooming out of a scene opened at a deep link still reaches its parent. |
+| `zoomIn` | `2` | Zooming in stops when the scene's smallest item is this many times the size of the view. |
+
 ## Packed, radial and fixed scenes
 
 A scene is laid out one of three ways:

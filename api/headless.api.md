@@ -15,9 +15,20 @@ export interface Camera {
 }
 
 // @public
+export interface CameraLimitOptions {
+    // (undocumented)
+    pan: number | null;
+    // (undocumented)
+    zoomIn: number | null;
+    // (undocumented)
+    zoomOut: number | null;
+}
+
+// @public
 export class CameraRig {
     constructor(readViewport: () => Viewport, camera: Camera);
     camera: Camera;
+    limit: ((camera: Camera) => Camera) | null;
     onChange: (() => void) | null;
     panByScreen(dx: number, dy: number): void;
     screenToWorld(screenX: number, screenY: number): ScreenPoint;
@@ -30,7 +41,7 @@ export class CameraRig {
 // @public
 export function clampPresence(value: number | undefined): number;
 
-// @public
+// @public (undocumented)
 export function createSceneStack<F>(input: SceneStackDeps<F>): {
     readonly current: StackedScene<F>;
     readonly depth: number;
@@ -222,6 +233,13 @@ export interface ExplorerLayout {
 }
 
 // @public
+export interface ExplorerLimits {
+    pan?: number | false;
+    zoomIn?: number | false;
+    zoomOut?: number | false;
+}
+
+// @public
 export interface ExplorerNode<F = unknown, D = unknown> {
     box?: ExplorerRect | null;
     color?: ExplorerColour | null;
@@ -249,6 +267,7 @@ export interface ExplorerOptions {
     customViews?: ExplorerCustomViews;
     edges?: ExplorerEdges;
     effects?: ExplorerEffects;
+    limits?: ExplorerLimits;
     textures?: ExplorerTextures;
 }
 
@@ -520,6 +539,11 @@ export interface ResolvedOptions {
             alphaFloor: number;
         };
     };
+    limits: {
+        pan: number | null;
+        zoomOut: number | null;
+        zoomIn: number | null;
+    };
     textures: {
         minDiameterPx: number;
         budget: number;
@@ -556,6 +580,7 @@ export interface SceneStackDeps<F> {
     applyScene: (scene: StackedScene<F>) => void;
     initialFocus: F | null;
     initialScene: ExplorerScene<F>;
+    limits?: () => CameraLimitOptions;
     onNavigate?: (event: {
         from: StackedScene<F>;
         to: StackedScene<F>;

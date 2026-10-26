@@ -10,6 +10,7 @@ export { CameraRig, type Camera, type Viewport } from "./camera/camera";
 export {
   createSceneStack,
   PREVIEW_RETRY_MS,
+  type CameraLimitOptions,
   type NavigationDirection,
   type PreviewParent,
   type RenderEdge,

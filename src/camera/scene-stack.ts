@@ -32,7 +32,9 @@ import {
   clampScale,
   fitCamera,
   lerpCamera,
+  limitCamera,
   scheduleFrame,
+  type CameraLimits,
   type Camera,
   type CameraRig,
   type ScreenPoint,
@@ -374,6 +376,9 @@ export interface SceneStackDeps<F> {
   applyScene: (scene: StackedScene<F>) => void;
   /** Ask for a redraw without a scene or camera change — a preview arrived or grew. */
   requestRedraw?: () => void;
+  /** How far the viewer may pan and zoom (the view's resolved `limits`), read on every camera
+   *  change. Absent: no limits beyond the camera's own scale range. */
+  limits?: () => CameraLimitOptions;
   /** US071 — a navigation made `to` current in place of `from`: `in` by entering an item, `out` by
    *  leaving to a parent, `jump` by a reset or `jumpTo`. Fired after `applyScene`. A streamed page
    *  or a refresh of the same scene is not a navigation and never fires this. A sideways move is a
@@ -407,7 +412,14 @@ function newHolder<F>(): PreviewHolder<F> {
  * previews of the scenes they are zooming towards, and the transitions between them. Its `enter`
  * animates the camera unless given `{ approach: false }`; for tests, `createTestStack` is simpler.
  */
-export function createSceneStack<F>({ rig, source, initialFocus, initialScene, applyScene, requestRedraw, onNavigate }: SceneStackDeps<F>) {
+/** The view's resolved `limits` (`ExplorerLimits`): `null` where a limit is off. */
+export interface CameraLimitOptions {
+  pan: number | null;
+  zoomOut: number | null;
+  zoomIn: number | null;
+}
+
+export function createSceneStack<F>({ rig, source, initialFocus, initialScene, applyScene, requestRedraw, onNavigate, limits }: SceneStackDeps<F>) {
   const keyOf = (focus: F | null) => source.keyOf(focus);
   /** A render node's drill target, handed back to the source as the type it came from. */
   const focusOf = (node: RenderNode) => node.focus as F | null;
@@ -420,6 +432,39 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
   let animating = false;
   let transitioning = false;
   let animationGeneration = 0;
+
+  if (limits) rig.limit = (camera) => limitCamera(camera, rig.viewport, cameraLimits(limits()));
+
+  /** The largest scale at which any item of the current scene still fits the view, by scene and
+   *  viewport size: the reference for `limits.zoomIn`. */
+  let itemFitCache: { scene: StackedScene<F>; width: number; height: number; scale: number } | null = null;
+  function smallestItemFit(): number {
+    const vp = rig.viewport;
+    if (itemFitCache && itemFitCache.scene === current && itemFitCache.width === vp.width && itemFitCache.height === vp.height) return itemFitCache.scale;
+    let scale = 0;
+    for (const n of current.renderNodes) scale = Math.max(scale, Math.min(vp.width / n.width, vp.height / n.height));
+    itemFitCache = { scene: current, width: vp.width, height: vp.height, scale };
+    return scale;
+  }
+
+  /**
+   * Where the camera may go in the current scene. The content is the scene, or inside one the
+   * scene drawn around it, so the viewer can pan across into a neighbour. The zoom-out limit holds
+   * only at the top of the stack, as zooming out of anything deeper leaves it; the zoom-in limit is
+   * a multiple of the zoom at which the scene's smallest item fills the view.
+   */
+  function cameraLimits(options: CameraLimitOptions): CameraLimits {
+    const vp = rig.viewport;
+    const { width, height } = current.layout;
+    const frame = stack[stack.length - 1];
+    const bounds = frame
+      ? parentBoxInChild({ x: 0, y: 0, width: frame.scene.layout.width, height: frame.scene.layout.height }, frame.anchorBox, width, height, frame.contain)
+      : { x: 0, y: 0, width, height };
+    const minScale = !frame && options.zoomOut !== null ? fitCamera(vp, width, height, 0.85).scale * options.zoomOut : 0;
+    const fit = options.zoomIn !== null ? smallestItemFit() : 0;
+    const maxScale = fit > 0 ? Math.max(minScale, fit * options.zoomIn!) : Infinity;
+    return { bounds, keep: options.pan, minScale, maxScale };
+  }
 
   // D1.3's prefetch bound, widened from one to `MAX_PREVIEW_LOADS` now that every visible node
   // previews. Not literally cancelled when superseded (fetch has no cheap abort here) — once a load

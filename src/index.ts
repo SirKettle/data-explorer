@@ -34,6 +34,7 @@ export {
   type ExplorerBackground,
   type ExplorerBackgroundImage,
   type ExplorerCustomViews,
+  type ExplorerLimits,
   type ExplorerEdges,
   type ExplorerEdgeStyle,
   type ExplorerEffects,

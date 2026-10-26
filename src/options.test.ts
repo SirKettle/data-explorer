@@ -22,9 +22,18 @@ describe("resolveOptions (US071 AC1: defaults are what the renderer drew before 
       },
       textures: { minDiameterPx: 48, budget: 128 },
       customViews: { max: 200 },
+      limits: { pan: 0.5, zoomOut: 0.5, zoomIn: 2 },
     });
     expect(resolveOptions({})).toEqual(DEFAULT_OPTIONS);
     expect(resolveOptions({ background: {}, effects: {} })).toEqual(DEFAULT_OPTIONS);
+  });
+
+  test("limits: each on by default, off with false, kept in range", () => {
+    expect(resolveOptions({ limits: { pan: false, zoomOut: false, zoomIn: false } }).limits).toEqual({ pan: null, zoomOut: null, zoomIn: null });
+    // zoomOut stays under the 0.7 at which zooming out of a deep-linked scene climbs to its parent.
+    expect(resolveOptions({ limits: { pan: 2, zoomOut: 0.9, zoomIn: 0.5 } }).limits).toEqual({ pan: 1, zoomOut: 0.65, zoomIn: 1 });
+    expect(resolveOptions({ limits: { pan: 0.1 } }).limits).toEqual({ pan: 0.1, zoomOut: 0.5, zoomIn: 2 });
+    expect(resolveOptions({ limits: { zoomIn: 3 } }).limits).toEqual({ pan: 0.5, zoomOut: 0.5, zoomIn: 3 });
   });
 
   test("returns a copy, so a resolved value can never alter the defaults", () => {

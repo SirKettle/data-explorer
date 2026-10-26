@@ -108,6 +108,37 @@ export function cameraFillingBox(viewport: Viewport, box: Box, fillFraction: num
   };
 }
 
+/** Where the camera may go, in the current scene's world (see `limitCamera`). */
+export interface CameraLimits {
+  /** The content the view must keep showing. */
+  bounds: { x: number; y: number; width: number; height: number };
+  /** How much of the view the content must keep covering on each axis, as a share of the view's
+   *  size on that axis (all of the content, where it is smaller); `null` for no pan limit. */
+  keep: number | null;
+  /** The smallest and largest scale allowed. */
+  minScale: number;
+  maxScale: number;
+}
+
+/**
+ * `camera` kept within `limits`: its scale clamped, then its centre moved, on each axis, just far
+ * enough that `bounds` still covers `keep` of the view (or all of itself, when smaller).
+ */
+export function limitCamera(camera: Camera, viewport: Viewport, limits: CameraLimits): Camera {
+  const scale = Math.min(limits.maxScale, Math.max(limits.minScale, camera.scale));
+  const keep = limits.keep;
+  if (keep === null) return { ...camera, scale };
+  const axis = (centre: number, start: number, size: number, view: number) => {
+    const need = Math.min(keep * view, size * scale);
+    const slack = (view / 2 - need) / scale;
+    const lo = start - slack;
+    const hi = start + size + slack;
+    return lo > hi ? start + size / 2 : Math.min(hi, Math.max(lo, centre));
+  };
+  const { x, y, width, height } = limits.bounds;
+  return { x: axis(camera.x, x, width, viewport.width), y: axis(camera.y, y, height, viewport.height), scale };
+}
+
 export function lerpCamera(a: Camera, b: Camera, t: number): Camera {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, scale: a.scale + (b.scale - a.scale) * t };
 }
@@ -119,6 +150,8 @@ export class CameraRig {
   camera: Camera;
   /** Called after every change of camera. */
   onChange: (() => void) | null = null;
+  /** Keeps every camera `set` within limits (`limitCamera`), or `null` for none. */
+  limit: ((camera: Camera) => Camera) | null = null;
 
   constructor(
     private readonly readViewport: () => Viewport,
@@ -132,9 +165,10 @@ export class CameraRig {
     return this.readViewport();
   }
 
-  /** Moves the camera, clamping its scale, and notifies `onChange`. */
+  /** Moves the camera, clamping its scale and applying `limit`, and notifies `onChange`. */
   set(camera: Camera): void {
-    this.camera = { ...camera, scale: clampScale(camera.scale) };
+    const clamped = { ...camera, scale: clampScale(camera.scale) };
+    this.camera = this.limit ? this.limit(clamped) : clamped;
     this.onChange?.();
   }
 
