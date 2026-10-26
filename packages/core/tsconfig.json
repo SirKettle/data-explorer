@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // The package imports itself by its published name in scripts/consumer; resolve that to source.
+    "paths": {
+      "@data-xplorer/core": ["./src/index.ts"],
+      "@data-xplorer/core/headless": ["./src/headless.ts"],
+      "@data-xplorer/core/pixi": ["./src/pixi.ts"]
+    }
+  },
+  "include": ["src", "test", "scripts", "stories"]
+}

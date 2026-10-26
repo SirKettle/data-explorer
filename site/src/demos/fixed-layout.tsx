@@ -1,4 +1,4 @@
-import { createSceneSource, DataExplorer, type ExplorerNode, type ExplorerRect } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer, type ExplorerNode, type ExplorerRect } from "@data-xplorer/core";
 
 // Two made-up islands, each split into districts that share their borders exactly. Every shape is
 // in one set of map units, as projected map data would be; nothing here is laid out for you.

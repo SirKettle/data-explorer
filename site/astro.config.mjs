@@ -1,4 +1,4 @@
-// The documentation site (US072 Step 6). Every demo on it imports the package from ../src, so the
+// The documentation site (US072 Step 6). Every demo on it imports the package from ../packages/core/src, so the
 // docs always run the code in this commit, and every page shows the very file its demo runs.
 import react from "@astrojs/react";
 import starlight from "@astrojs/starlight";
@@ -7,18 +7,18 @@ import { fileURLToPath } from "node:url";
 import starlightLinksValidator from "starlight-links-validator";
 import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 
-const src = (file) => fileURLToPath(new URL(`../src/${file}`, import.meta.url));
+const src = (file) => fileURLToPath(new URL(`../packages/core/src/${file}`, import.meta.url));
 
 export default defineConfig({
   site: "https://sirkettle.github.io",
-  base: "/data-explorer",
+  base: "/data-xplorer",
   integrations: [
     react(),
     starlight({
-      title: "data-explorer",
+      title: "data-xplorer",
       description: "A continuous, zoomable explorer for tree- and graph-shaped data, with an accessible outline.",
-      social: [{ icon: "github", label: "GitHub", href: "https://github.com/SirKettle/data-explorer" }],
-      editLink: { baseUrl: "https://github.com/SirKettle/data-explorer/edit/main/site/" },
+      social: [{ icon: "github", label: "GitHub", href: "https://github.com/SirKettle/data-xplorer" }],
+      editLink: { baseUrl: "https://github.com/SirKettle/data-xplorer/edit/main/site/" },
       customCss: ["./src/styles/demo.css"],
       plugins: [
         starlightLinksValidator({ errorOnRelativeLinks: false }),
@@ -43,9 +43,9 @@ export default defineConfig({
     server: { fs: { allow: [".."] } },
     resolve: {
       alias: [
-        { find: /^@thirkettle\/data-explorer\/headless$/, replacement: src("headless.ts") },
-        { find: /^@thirkettle\/data-explorer\/pixi$/, replacement: src("pixi.ts") },
-        { find: /^@thirkettle\/data-explorer$/, replacement: src("index.ts") },
+        { find: /^@data-xplorer\/core\/headless$/, replacement: src("headless.ts") },
+        { find: /^@data-xplorer\/core\/pixi$/, replacement: src("pixi.ts") },
+        { find: /^@data-xplorer\/core$/, replacement: src("index.ts") },
       ],
     },
   },

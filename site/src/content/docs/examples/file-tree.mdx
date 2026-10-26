@@ -6,14 +6,14 @@ sidebar:
 ---
 
 import ExampleFrame from "../../../components/ExampleFrame.astro";
-import f_source_ts from "../../../../../examples/file-tree/source.ts?raw";
-import f_main_tsx from "../../../../../examples/file-tree/main.tsx?raw";
-import f_data_ts from "../../../../../examples/file-tree/data.ts?raw";
+import f_source_ts from "../../../../../packages/core/examples/file-tree/source.ts?raw";
+import f_main_tsx from "../../../../../packages/core/examples/file-tree/main.tsx?raw";
+import f_data_ts from "../../../../../packages/core/examples/file-tree/data.ts?raw";
 
 The minimum: a tree of packed scenes, a string focus, and a `parentOf` that is always `anchored`. Also `windowed` with an honest aggregate (`assets/icons` holds 420 files and draws 120, with a hollow cluster saying how many it left out), `ramp` for file age, `emphasis: ["ring"]` for uncommitted changes, and `invalidate()`: switch to colouring by type and each file carries its own `color`, recoloured in place.
 
 The frame below runs the example built from exactly these files. Start with `source.ts`. Every
-example shares one small page shell (`examples/shared/ExampleShell.tsx`): it keeps the focus in the
+example shares one small page shell (`packages/core/examples/shared/ExampleShell.tsx`): it keeps the focus in the
 URL hash, builds a breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
 
 <ExampleFrame name="file-tree" files={{ "source.ts": f_source_ts, "main.tsx": f_main_tsx, "data.ts": f_data_ts }} />

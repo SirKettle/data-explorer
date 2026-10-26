@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { createSceneSource, DataExplorer } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer } from "@data-xplorer/core";
 
 // Programming languages, sized by how widely they are taught, placed once. Presence fades in each
 // language from the year it appeared, so the map grows as the slider moves and nothing is relaid out.

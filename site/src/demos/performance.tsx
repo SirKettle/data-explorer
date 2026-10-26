@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer, type ExplorerEdge } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer, type ExplorerEdge } from "@data-xplorer/core";
 
 // A thousand items and some edges, with the stats overlay on: draw time, frame rate, pool sizes.
 const COUNT = 1_000;

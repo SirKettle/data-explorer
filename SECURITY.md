@@ -1,7 +1,7 @@
 # Security
 
 Please report a vulnerability privately, through
-[GitHub's private vulnerability reporting](https://github.com/SirKettle/data-explorer/security/advisories/new),
+[GitHub's private vulnerability reporting](https://github.com/SirKettle/data-xplorer/security/advisories/new),
 not in a public issue. You should hear back within a week.
 
 Only the latest published minor version receives fixes while the package is 0.x.

@@ -2,7 +2,7 @@
 // the page's first load. It imports PixiJS only as types: its classes come from `create(kit)`, so
 // PixiJS reaches the page by one lazy path, the package's own.
 import type { Container } from "pixi.js";
-import { defineRenderers } from "@thirkettle/data-explorer/pixi";
+import { defineRenderers } from "@data-xplorer/core/pixi";
 
 const PETALS = 6;
 

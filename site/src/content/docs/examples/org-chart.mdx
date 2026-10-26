@@ -6,15 +6,15 @@ sidebar:
 ---
 
 import ExampleFrame from "../../../components/ExampleFrame.astro";
-import f_source_ts from "../../../../../examples/org-chart/source.ts?raw";
-import f_main_tsx from "../../../../../examples/org-chart/main.tsx?raw";
-import f_data_ts from "../../../../../examples/org-chart/data.ts?raw";
-import f_smoke_test_ts from "../../../../../examples/org-chart/smoke.test.ts?raw";
+import f_source_ts from "../../../../../packages/core/examples/org-chart/source.ts?raw";
+import f_main_tsx from "../../../../../packages/core/examples/org-chart/main.tsx?raw";
+import f_data_ts from "../../../../../packages/core/examples/org-chart/data.ts?raw";
+import f_smoke_test_ts from "../../../../../packages/core/examples/org-chart/smoke.test.ts?raw";
 
 Departments, teams and people as a tree, into a radial person view whose manager and reports are drawn edges you can walk. It was written from the documentation alone, as a test of whether the documentation is enough, and its `smoke.test.ts` drives it headless with `createTestStack`.
 
 The frame below runs the example built from exactly these files. Start with `source.ts`. Every
-example shares one small page shell (`examples/shared/ExampleShell.tsx`): it keeps the focus in the
+example shares one small page shell (`packages/core/examples/shared/ExampleShell.tsx`): it keeps the focus in the
 URL hash, builds a breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
 
 <ExampleFrame name="org-chart" files={{ "source.ts": f_source_ts, "main.tsx": f_main_tsx, "data.ts": f_data_ts, "smoke.test.ts": f_smoke_test_ts }} />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer, type ExplorerEdges } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer, type ExplorerEdges } from "@data-xplorer/core";
 
 // A module and its neighbours: what it imports, and what imports it.
 const imports: Record<string, string[]> = {

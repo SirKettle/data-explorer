@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer } from "@data-xplorer/core";
 
 // The canvas is hidden from assistive technology; the outline beside it is not. It lists the
 // scene as real links (each item's `href`) and is read aloud. Show it to see what is announced.

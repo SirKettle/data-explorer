@@ -5,7 +5,7 @@ import {
   FALLBACK_PALETTE,
   type ExplorerPalette,
   type RampColours,
-} from "@thirkettle/data-explorer";
+} from "@data-xplorer/core";
 
 // Twelve months of releases; each sits on the colour ramp by how long ago it shipped.
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

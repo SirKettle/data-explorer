@@ -1,20 +1,21 @@
 ---
 title: A world map
-description: The a world map example, running, with its source.
+description: The world app, running, with its source.
 sidebar:
   order: 6
 ---
 
 import ExampleFrame from "../../../components/ExampleFrame.astro";
-import f_source_ts from "../../../../../examples/world-map/source.ts?raw";
-import f_data_ts from "../../../../../examples/world-map/data.ts?raw";
-import f_continents_ts from "../../../../../examples/world-map/continents.ts?raw";
-import f_main_tsx from "../../../../../examples/world-map/main.tsx?raw";
+import f_source_ts from "../../../../../apps/world/src/source.ts?raw";
+import f_data_ts from "../../../../../apps/world/src/data.ts?raw";
+import f_continents_ts from "../../../../../apps/world/src/continents.ts?raw";
+import f_main_tsx from "../../../../../apps/world/src/main.tsx?raw";
 
-Real country shapes in [fixed scenes](/data-explorer/guides/fixed-layouts/): Natural Earth's 110m countries from `world-atlas`, projected once with `d3-geo` into one set of map units, and drawn as `region`s with their own `outline`s. Continents enter to their countries, which land exactly where the continent was drawn. Lesotho is a hole in South Africa's outline, and each label sits at its country's `labelAt`, the middle of its biggest piece.
+Real country shapes in [fixed scenes](/data-xplorer/guides/fixed-layouts/): Natural Earth's 110m countries from `world-atlas`, projected once with `d3-geo` into one set of map units, and drawn as `region`s with their own `outline`s. Continents enter to their countries, which land exactly where the continent was drawn. Lesotho is a hole in South Africa's outline, and each label sits at its country's `labelAt`, the middle of its biggest piece.
 
-The frame below runs the example built from exactly these files. Start with `source.ts`; `data.ts` is the projection, which the explorer never sees. Every
-example shares one small page shell (`examples/shared/ExampleShell.tsx`): it keeps the focus in the
-URL hash, builds a breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
+This one is an app of its own, `apps/world` in the repository, built on the published package. The
+frame below runs it, built from exactly these files. Start with `source.ts`; `data.ts` is the
+projection, which the explorer never sees. `main.tsx` keeps the focus in the URL hash, builds a
+breadcrumb from `onSceneChange`, and shows the selected country from `onNodeSelect`.
 
-<ExampleFrame name="world-map" files={{ "source.ts": f_source_ts, "data.ts": f_data_ts, "continents.ts": f_continents_ts, "main.tsx": f_main_tsx }} />
+<ExampleFrame name="world-map" dir="apps/world/src" files={{ "source.ts": f_source_ts, "data.ts": f_data_ts, "continents.ts": f_continents_ts, "main.tsx": f_main_tsx }} />

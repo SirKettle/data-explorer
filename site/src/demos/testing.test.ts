@@ -1,7 +1,7 @@
 // Runs in this repository's CI with `bun test`; Vitest and Node's test runner work the same way.
 import { expect, test } from "bun:test";
-import { createSceneSource } from "@thirkettle/data-explorer";
-import { createTestStack } from "@thirkettle/data-explorer/headless";
+import { createSceneSource } from "@data-xplorer/core";
+import { createTestStack } from "@data-xplorer/core/headless";
 
 const folders: Record<string, string[]> = { "/": ["/src", "/docs"], "/src": ["/src/lib"], "/src/lib": [], "/docs": [] };
 

@@ -2,7 +2,7 @@ name: Release
 
 # release-please keeps a release pull request open from Conventional Commits on main. Merging it
 # creates the release, and the publish job below runs in this same workflow (a release made with
-# GITHUB_TOKEN cannot trigger another one). Run it by hand for a dry run: build, checks and
+# GITHUB_TOKEN cannot trigger another one). It releases packages/core (@data-xplorer/core); the apps are private. Run it by hand for a dry run: build, checks and
 # `npm publish --dry-run`, publishing nothing.
 on:
   push:
@@ -18,8 +18,8 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      release_created: ${{ steps.release.outputs['packages/core--release_created'] }}
+      tag_name: ${{ steps.release.outputs['packages/core--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -32,6 +32,9 @@ jobs:
     # `always()` lets a manual dry run proceed although release-please was skipped.
     if: always() && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created == 'true')
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/core
     permissions:
       contents: read
       id-token: write # npm trusted publishing (OIDC) and provenance

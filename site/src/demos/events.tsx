@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer, type ExplorerItem } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer, type ExplorerItem } from "@data-xplorer/core";
 
 // Your own data rides along on each item as `data`, and comes back with it in the events.
 type Planet = { moons: number };

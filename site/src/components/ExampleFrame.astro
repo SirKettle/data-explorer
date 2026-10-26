@@ -1,18 +1,20 @@
 ---
-// An example from `examples/`, built by `scripts/build-examples.ts` and shown running in a frame
+// An example from `packages/core/examples/` (or an app from `apps/`), built by `scripts/build-examples.ts` and shown running in a frame
 // (each example keeps its focus in the URL hash and styles its whole page, so it needs its own
 // document), beside the source files it was built from.
 import { Code, TabItem, Tabs } from "@astrojs/starlight/components";
 
 interface Props {
-  /** The folder under `examples/`. */
+  /** Its name in the gallery: the folder under `packages/core/examples/`. */
   name: string;
+  /** Where its files are in the repo, for their titles, when it is not an example (an app). */
+  dir?: string;
   /** The example's files, each imported `?raw`, by path. */
   files: Record<string, string>;
   /** Query string for the page, without `?`. */
   query?: string;
 }
-const { name, files, query } = Astro.props;
+const { name, dir = `packages/core/examples/${name}`, files, query } = Astro.props;
 const src = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/live/${name}/${query ? `?${query}` : ""}`;
 ---
 
@@ -24,7 +26,7 @@ const src = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/live/${name}/${query
   {
     Object.entries(files).map(([path, code]) => (
       <TabItem label={path}>
-        <Code code={code.trimEnd()} lang={path.endsWith(".html") ? "html" : path.endsWith(".css") ? "css" : path.endsWith(".ts") ? "ts" : "tsx"} title={`examples/${name}/${path}`} />
+        <Code code={code.trimEnd()} lang={path.endsWith(".html") ? "html" : path.endsWith(".css") ? "css" : path.endsWith(".ts") ? "ts" : "tsx"} title={`${dir}/${path}`} />
       </TabItem>
     ))
   }

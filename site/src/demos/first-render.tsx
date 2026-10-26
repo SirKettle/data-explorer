@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer } from "@data-xplorer/core";
 
 // Your data: here, a small folder tree. Folders hold folders and files (with sizes in bytes).
 const tree: Record<string, { folders: string[]; files: [string, number][] }> = {

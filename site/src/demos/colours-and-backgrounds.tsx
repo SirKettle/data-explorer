@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSceneSource, DataExplorer, type ExplorerBackground } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer, type ExplorerBackground } from "@data-xplorer/core";
 
 // An item's own `color` wins over the ramp. Any CSS colour string (or a 0xRRGGBB number) works.
 const languages: [string, number, string][] = [

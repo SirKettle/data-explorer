@@ -1,4 +1,4 @@
-import { createSceneSource, DataExplorer } from "@thirkettle/data-explorer";
+import { createSceneSource, DataExplorer } from "@data-xplorer/core";
 
 // Items with a `kind` are drawn by your renderer for that kind; the rest keep their shape.
 const source = createSceneSource<null>({
