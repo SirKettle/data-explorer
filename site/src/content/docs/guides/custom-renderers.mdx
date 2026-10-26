@@ -30,8 +30,9 @@ The module it loads. It builds its views from the classes `create(kit)` is hande
   import of `pixi.js` in a lazily loaded module made Bun's bundler emit a PixiJS chunk as one
   app's page entry (it built, then rendered blank). Other bundlers may cope; the kit makes it a
   non-question.
-- **The frame** gives `size` (world units: draw centred on 0, 0), `screenSize` (pixels, for level
-  of detail), `opacity`, `hovered`, `selected`, `timeMs`, `tint` (the colour the item would have
+- **The frame** gives `size` (world units: draw centred on 0, 0), `width` and `height` (the item's
+  box, which in a [fixed scene](/data-explorer/guides/fixed-layouts/) need not be square; `size` is
+  the largest circle that fits it), `screenSize` (pixels, for level of detail), `opacity`, `hovered`, `selected`, `timeMs`, `tint` (the colour the item would have
   had), `texture` (the item's own image, once ready) and `reducedMotion`. The second argument is the
   laid-out item; its `item` field is your item as you wrote it.
 - **The explorer still does** culling, transitions, hit-testing, the outline, rings, halos, glows

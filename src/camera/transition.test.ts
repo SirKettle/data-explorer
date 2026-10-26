@@ -45,23 +45,40 @@ describe("transition curves", () => {
 });
 
 describe("child <-> parent placement", () => {
-  const anchor = { x: 100, y: 40, size: 50 };
+  const anchor = { x: 100, y: 40, width: 50, height: 50 };
 
   test("the child layout is centred in the anchor, fitted to 80% of it", () => {
-    const whole = childBoxInParent({ x: 0, y: 0, size: 400 }, anchor, 400, 400);
-    expect(whole.size).toBeCloseTo(40);
-    expect(whole.x + whole.size / 2).toBeCloseTo(125);
-    expect(whole.y + whole.size / 2).toBeCloseTo(65);
-    expect(childToParentFactor(50, 400, 200)).toBeCloseTo(40 / 400);
+    const whole = childBoxInParent({ x: 0, y: 0, width: 400, height: 400 }, anchor, 400, 400);
+    expect(whole.width).toBeCloseTo(40);
+    expect(whole.height).toBeCloseTo(40);
+    expect(whole.x + whole.width / 2).toBeCloseTo(125);
+    expect(whole.y + whole.height / 2).toBeCloseTo(65);
+    expect(childToParentFactor(anchor, 400, 200)).toBeCloseTo(40 / 400);
   });
 
   test("parentBoxInChild inverts childBoxInParent", () => {
-    const box = { x: 37, y: 212, size: 18 };
+    const box = { x: 37, y: 212, width: 18, height: 18 };
     const there = childBoxInParent(box, anchor, 640, 480);
     const back = parentBoxInChild(there, anchor, 640, 480);
     expect(back.x).toBeCloseTo(box.x);
     expect(back.y).toBeCloseTo(box.y);
-    expect(back.size).toBeCloseTo(box.size);
+    expect(back.width).toBeCloseTo(box.width);
+    expect(back.height).toBeCloseTo(box.height);
+  });
+
+  test("a rectangular anchor fits the child by its tighter axis, keeping the child's proportions", () => {
+    const wide = { x: 0, y: 0, width: 200, height: 50 };
+    // A square child is limited by the anchor's height: 80% of 50 over 100.
+    expect(childToParentFactor(wide, 100, 100)).toBeCloseTo(0.4);
+    // A child of the anchor's own proportions fills 80% of it on both axes, centred.
+    const whole = childBoxInParent({ x: 0, y: 0, width: 400, height: 100 }, wide, 400, 100);
+    expect(whole.width).toBeCloseTo(160);
+    expect(whole.height).toBeCloseTo(40);
+    expect(whole.x + whole.width / 2).toBeCloseTo(100);
+    expect(whole.y + whole.height / 2).toBeCloseTo(25);
+    const box = { x: 12, y: 30, width: 40, height: 7 };
+    const back = parentBoxInChild(childBoxInParent(box, wide, 400, 100), wide, 400, 100);
+    expect(back).toEqual({ x: expect.closeTo(12), y: expect.closeTo(30), width: expect.closeTo(40), height: expect.closeTo(7) });
   });
 });
 

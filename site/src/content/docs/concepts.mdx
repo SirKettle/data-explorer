@@ -1,6 +1,6 @@
 ---
 title: Concepts
-description: Focus, scenes, packed and radial layouts, drilling and zooming out, loading, and the accessible outline.
+description: Focus, scenes, packed, radial and fixed layouts, drilling and zooming out, loading, and the accessible outline.
 sidebar:
   order: 2
 ---
@@ -60,13 +60,16 @@ says. `parentOf` matters when they arrived another way, such as a deep link. The
 stack of the scenes the viewer entered and never walks your data, so a graph with cycles costs only
 the scenes actually visited.
 
-## Packed and radial scenes
+## Packed, radial and fixed scenes
 
-A scene is laid out one of two ways:
+A scene is laid out one of three ways:
 
 - **Packed**: clusters and nodes packed together, biggest first. How a level of a tree is shown.
 - **Radial**: one item in the middle with its neighbours round it. How one item's neighbourhood
   in a graph is shown.
+- **Fixed**: every item at the rectangle you give it, for data with places of its own, such as a
+  map. Set `layout: "fixed"` and give each item a `box`: see
+  [Fixed layouts and regions](/data-explorer/guides/fixed-layouts/).
 
 A scene is radial when it sets **`focusId`** to the id of the item to put in the middle. In a
 radial scene:

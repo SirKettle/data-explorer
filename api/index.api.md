@@ -102,6 +102,7 @@ export interface ExplorerCameraEvent {
 
 // @public
 export interface ExplorerCluster<F = unknown, D = unknown> {
+    box?: ExplorerRect | null;
     color?: ExplorerColour | null;
     data?: D;
     drillsInto: F | null;
@@ -111,7 +112,9 @@ export interface ExplorerCluster<F = unknown, D = unknown> {
     id: string;
     kind?: string | null;
     label: string;
+    labelAt?: ExplorerPoint | null;
     marks?: string[];
+    outline?: ExplorerOutline | null;
     ramp?: number | null;
     shape: ExplorerShape;
     sublabel?: string | null;
@@ -206,6 +209,7 @@ export type ExplorerItem<F = unknown, D = unknown> = ExplorerNode<F, D> | Explor
 
 // @public
 export interface ExplorerNode<F = unknown, D = unknown> {
+    box?: ExplorerRect | null;
     color?: ExplorerColour | null;
     data?: D;
     drillsInto: F | null;
@@ -215,7 +219,9 @@ export interface ExplorerNode<F = unknown, D = unknown> {
     id: string;
     kind?: string | null;
     label: string;
+    labelAt?: ExplorerPoint | null;
     marks?: string[];
+    outline?: ExplorerOutline | null;
     ramp?: number | null;
     shape: ExplorerShape;
     sublabel?: string | null;
@@ -233,6 +239,9 @@ export interface ExplorerOptions {
 }
 
 // @public
+export type ExplorerOutline = number[][][][];
+
+// @public
 export interface ExplorerPalette {
     aggregate: ExplorerColour;
     background: ExplorerColour;
@@ -245,16 +254,32 @@ export interface ExplorerPalette {
 }
 
 // @public
+export interface ExplorerPoint {
+    x: number;
+    y: number;
+}
+
+// @public
 export type ExplorerPresence = (id: string) => number | undefined;
 
 // @public
+export interface ExplorerRect {
+    height: number;
+    width: number;
+    x: number;
+    y: number;
+}
+
+// @public
 export interface ExplorerScene<F = unknown, D = unknown> {
+    bounds?: ExplorerRect | null;
     clusters: ExplorerCluster<F, D>[];
     edges: ExplorerEdge[];
     expectedItemCount?: number;
     focusId?: string | null;
     heading: string;
     id: string;
+    layout?: "packed" | "fixed";
     nodes: ExplorerNode<F, D>[];
 }
 
@@ -267,7 +292,7 @@ export interface ExplorerSceneEvent<F, D = unknown> {
 }
 
 // @public
-export type ExplorerShape = "cloud" | "disc" | "square";
+export type ExplorerShape = "cloud" | "disc" | "square" | "region";
 
 // @public
 export interface ExplorerTexture {

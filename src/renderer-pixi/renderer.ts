@@ -32,6 +32,7 @@ import { nearestFirst, type RendererModule } from "../custom-views";
 import { appearanceFor, hashId, type GlowSwitches, type ResolvedPalette, type RampColours } from "./tint";
 import { prefersReducedMotion, pulseLevel, wantsNextFrame } from "../motion";
 import type { Camera, ScreenPoint, Viewport } from "../camera/camera";
+import { contains, distanceToCentre } from "../scene/geometry";
 import { DEFAULT_OPTIONS, type ExplorerGridTile, type ExplorerGridTileModule, type ResolvedOptions } from "../options";
 
 export interface RendererStats {
@@ -379,6 +380,12 @@ export async function createRenderer(
   const markLayer = new Container();
   world.addChild(markLayer);
 
+  // A region's outline is stroked rather than ringed by a sprite (a ring texture cannot follow it):
+  // the `ring` emphasis, hover and selection, redrawn each frame in world units at a constant width
+  // on screen. Above every item, like the rings it stands in for.
+  const regionStrokes = new Graphics();
+  world.addChild(regionStrokes);
+
   const overlay = new Container();
   app.stage.addChild(overlay);
 
@@ -407,6 +414,10 @@ export async function createRenderer(
   });
 
   const spritePool: Sprite[] = [];
+  /** Region fills, pooled in draw order like `spritePool`. Each is built once at a size of 1 × 1
+   *  round (0, 0) and scaled to its box, so it is rebuilt only when it is given another outline. */
+  const regionPool: Graphics[] = [];
+  const regionBuiltFor: (number[][][][] | null | undefined)[] = [];
   const markRingPool: Sprite[] = [];
   const haloPool: Sprite[] = [];
   const glowPool: Sprite[] = [];
@@ -460,6 +471,44 @@ export async function createRenderer(
     resolution,
     framebufferPixels: 0,
   };
+
+  function acquireRegion(index: number, outline: number[][][][] | null): Graphics {
+    let region = regionPool[index];
+    if (!region) {
+      region = new Graphics();
+      regionPool[index] = region;
+      regionBuiltFor[index] = undefined;
+      itemLayer.addChild(region);
+    }
+    if (regionBuiltFor[index] !== outline) {
+      region.clear();
+      if (!outline) region.rect(-0.5, -0.5, 1, 1).fill(0xffffff);
+      else
+        for (const [edge, ...holes] of outline) {
+          if (!edge) continue;
+          region.poly(edge.flatMap(([u, v]) => [u! - 0.5, v! - 0.5])).fill(0xffffff);
+          for (const hole of holes) region.poly(hole.flatMap(([u, v]) => [u! - 0.5, v! - 0.5])).cut();
+        }
+      regionBuiltFor[index] = outline;
+    }
+    return region;
+  }
+
+  /** Strokes `node`'s region outline (or its box) into `regionStrokes`, `widthPx` wide on screen,
+   *  at `grow` of its size round its middle, as its fill is while it grows in. */
+  function strokeRegion(node: RenderNode, widthPx: number, color: number, alpha: number, scale: number, grow = 1) {
+    const stroke = { width: widthPx / scale, color, alpha, join: "round" as const };
+    const w = node.width * grow;
+    const h = node.height * grow;
+    const left = node.x + (node.width - w) / 2;
+    const top = node.y + (node.height - h) / 2;
+    if (!node.outline) {
+      regionStrokes.rect(left, top, w, h).stroke(stroke);
+      return;
+    }
+    for (const polygon of node.outline)
+      for (const ring of polygon) regionStrokes.poly(ring.flatMap(([u, v]) => [left + u! * w, top + v! * h])).stroke(stroke);
+  }
 
   function acquireSprite(index: number): Sprite {
     let sprite = spritePool[index];
@@ -704,6 +753,9 @@ export async function createRenderer(
     const bottom = camera.y + halfH + buffer;
 
     let spriteIndex = 0;
+    let regionIndex = 0;
+    const ringedRegions: { node: RenderNode; alpha: number; grow: number }[] = [];
+    regionStrokes.clear();
     const labelCandidates: { node: RenderNode; diameter: number; alpha: number }[] = [];
 
     let markRingIndex = 0;
@@ -718,16 +770,16 @@ export async function createRenderer(
       node.kind !== null &&
       !node.aggregate &&
       opacity >= MIN_DRAWN_ALPHA &&
-      node.x + node.size >= left &&
+      node.x + node.width >= left &&
       node.x <= right &&
-      node.y + node.size >= top &&
+      node.y + node.height >= top &&
       node.y <= bottom &&
       customViews.has(node.kind);
     const customCandidates: { key: string; distance: number }[] = [];
     const considerLayer = (tag: string, layerNodes: readonly RenderNode[], alpha: (node: RenderNode) => number) => {
       for (const node of layerNodes) {
         if (!isCustomCandidate(node, alpha(node))) continue;
-        customCandidates.push({ key: `${tag}:${node.id}`, distance: Math.hypot(node.x + node.size / 2 - camera.x, node.y + node.size / 2 - camera.y) });
+        customCandidates.push({ key: `${tag}:${node.id}`, distance: Math.hypot(node.x + node.width / 2 - camera.x, node.y + node.height / 2 - camera.y) });
       }
     };
     (transition?.under ?? []).forEach((layer, i) => considerLayer(`u${i}`, layer.nodes, layer.alpha));
@@ -741,12 +793,17 @@ export async function createRenderer(
     function drawNode(node: RenderNode, opacity: number, decorated: boolean, tag: string) {
       if (opacity < MIN_DRAWN_ALPHA) return;
       const look = appearanceFor(node, currentRamp, switches);
+      // The shape is drawn centred in the item's box: a square stretched to fill it (a rectangle, in a
+      // box that is not square), a disc or cloud as big as fits. In a square box, the box itself.
+      const side = Math.min(node.width, node.height);
+      const spanX = look.shape === "square" ? node.width : side;
+      const spanY = look.shape === "square" ? node.height : side;
       const spread = look.shape === "nebula" ? NEBULA_SPREAD : 1;
-      const reach = (node.size * (spread - 1)) / 2;
+      const reach = (side * (spread - 1)) / 2;
       if (
-        node.x + node.size + reach < left ||
+        node.x + node.width + reach < left ||
         node.x - reach > right ||
-        node.y + node.size + reach < top ||
+        node.y + node.height + reach < top ||
         node.y - reach > bottom
       )
         return;
@@ -775,8 +832,8 @@ export async function createRenderer(
         opacity *= presence.alpha;
       }
 
-      const centreX = node.x + node.size / 2;
-      const centreY = node.y + node.size / 2;
+      const centreX = node.x + node.width / 2;
+      const centreY = node.y + node.height / 2;
       const order = drawOrder++;
 
       // US071 — a custom renderer draws the item instead of its shape and texture. It returns false
@@ -788,14 +845,16 @@ export async function createRenderer(
           node.kind,
           node,
           {
-            size: grow * node.size,
-            screenSize: node.size * camera.scale,
+            size: grow * side,
+            width: grow * node.width,
+            height: grow * node.height,
+            screenSize: side * camera.scale,
             opacity,
             hovered: hoveredId === node.id,
             selected: selectedId === node.id,
             timeMs: t0,
             tint: look.tint,
-            texture: node.texture && decorated ? textureStore.textureFor(node.texture, "disc", node.size * camera.scale, options.textures.minDiameterPx) : null,
+            texture: node.texture && decorated ? textureStore.textureFor(node.texture, "disc", side * camera.scale, options.textures.minDiameterPx) : null,
             reducedMotion,
           },
           (view) => {
@@ -808,6 +867,16 @@ export async function createRenderer(
       if (!decorated) return;
 
       function drawShape() {
+        if (look.shape === "region") {
+          const region = acquireRegion(regionIndex++, node.outline);
+          region.visible = true;
+          region.zIndex = itemZ(order, "body");
+          region.position.set(centreX, centreY);
+          region.scale.set(grow * node.width, grow * node.height);
+          region.tint = look.tint!;
+          region.alpha = (node.drillable ? 1 : 0.86) * opacity;
+          return;
+        }
         const sprite = acquireSprite(spriteIndex++);
         sprite.visible = true;
         sprite.rotation = 0;
@@ -817,20 +886,20 @@ export async function createRenderer(
         // it can never be mistaken for a real, drillable item (ADR-016 Decision 3).
         if (look.shape === "aggregate") {
           sprite.texture = ringTexture;
-          sprite.scale.set(grow * (node.size * 0.94) / DISC_TEXTURE_SIZE);
+          sprite.scale.set(grow * (side * 0.94) / DISC_TEXTURE_SIZE);
           sprite.tint = tokens.aggregate;
           sprite.alpha = 0.6 * opacity;
         } else if (look.shape === "nebula") {
           const hash = hashId(node.id);
           sprite.texture = nebulaTextures[hash % NEBULA_VARIANTS]!;
           sprite.rotation = ((hash >>> 8) % 628) / 100;
-          sprite.scale.set(grow * (node.size * NEBULA_SPREAD) / NEBULA_TEXTURE_SIZE);
+          sprite.scale.set(grow * (side * NEBULA_SPREAD) / NEBULA_TEXTURE_SIZE);
           // Coloured by its sets' mean year, on the same ramp as the sets themselves.
           sprite.tint = look.tint!;
           sprite.alpha = NEBULA_ALPHA * opacity;
         } else {
           sprite.texture = look.shape === "square" ? squareTexture : discTexture;
-          sprite.scale.set(grow * node.size / DISC_TEXTURE_SIZE);
+          sprite.scale.set((grow * spanX) / DISC_TEXTURE_SIZE, (grow * spanY) / DISC_TEXTURE_SIZE);
           // D4 — a dated set is tinted by its era ramp instead of the ordinary per-id hash; anything
           // without a recorded year (or that isn't a set at all) falls back to `nodeTint` unchanged.
           sprite.tint = look.tint!;
@@ -840,14 +909,14 @@ export async function createRenderer(
         // US071 — the item's image over its shape, once big enough on screen and loaded. Until then
         // (and if it fails) the plain shape above is what shows.
         if (decorated && node.texture && (look.shape === "disc" || look.shape === "square")) {
-          const texture = textureStore.textureFor(node.texture, look.shape, node.size * camera.scale, options.textures.minDiameterPx);
+          const texture = textureStore.textureFor(node.texture, look.shape, side * camera.scale, options.textures.minDiameterPx);
           if (texture) {
             const textured = acquireTextured(textureIndex++);
             textured.visible = true;
             textured.texture = texture;
             textured.zIndex = itemZ(order, "texture");
             textured.position.copyFrom(sprite.position);
-            textured.scale.set((grow * node.size) / CROP_SIZE);
+            textured.scale.set((grow * side) / CROP_SIZE);
             textured.alpha = sprite.alpha;
           }
         }
@@ -866,7 +935,7 @@ export async function createRenderer(
         const glow = acquireGlow(glowIndex++);
         glow.visible = true;
         glow.position.set(centreX, centreY);
-        glow.scale.set((grow * node.size * size) / GLOW_TEXTURE_SIZE);
+        glow.scale.set((grow * side * size) / GLOW_TEXTURE_SIZE);
         glow.tint = look.tint;
         glow.alpha = alpha * opacity;
       }
@@ -874,13 +943,17 @@ export async function createRenderer(
       // D5, restyled — a shape-matched outline plus a soft shape-matched halo behind it, for the
       // `ring` emphasis the adapter declares. Other marks are text, surfaced via the detail modal's
       // `rawMarks` only. An aggregate is drawn hollow above, so its ring (if any) is a disc.
-      if (look.ring !== null) {
+      if (look.ring === "region") {
+        ringedRegions.push({ node, alpha: opacity, grow });
+      } else if (look.ring !== null) {
+        const ringX = look.ring === "square" ? node.width : side;
+        const ringY = look.ring === "square" ? node.height : side;
         if (haloLook.enabled) {
           const halo = acquireHalo(haloIndex++);
           halo.visible = true;
           halo.texture = textureForShape(look.ring);
           halo.position.set(centreX, centreY);
-          halo.scale.set(grow * (node.size * haloLook.scale) / DISC_TEXTURE_SIZE);
+          halo.scale.set((grow * ringX * haloLook.scale) / DISC_TEXTURE_SIZE, (grow * ringY * haloLook.scale) / DISC_TEXTURE_SIZE);
           halo.tint = tokens.ownership;
           halo.alpha = haloLook.alpha * opacity;
         }
@@ -889,12 +962,13 @@ export async function createRenderer(
         ring.visible = true;
         ring.texture = ringTextureForShape(look.ring);
         ring.position.set(centreX, centreY);
-        ring.scale.set(grow * (node.size * ringLook.scale) / DISC_TEXTURE_SIZE);
+        ring.scale.set((grow * ringX * ringLook.scale) / DISC_TEXTURE_SIZE, (grow * ringY * ringLook.scale) / DISC_TEXTURE_SIZE);
         ring.tint = tokens.ownership;
         ring.alpha = opacity;
       }
 
-      const diameter = node.size * camera.scale;
+      // A region is labelled inside itself, so its long side, not its short one, says whether a label fits.
+      const diameter = (look.shape === "region" ? Math.max(node.width, node.height) : side) * camera.scale;
       if (diameter >= LABEL_MIN_DIAMETER_PX && opacity > 0.15 && grow > 0.6) labelCandidates.push({ node, diameter, alpha: opacity });
     }
 
@@ -924,6 +998,8 @@ export async function createRenderer(
     aroundById = new Map(around.map((node) => [node.id, node]));
 
     for (let i = spriteIndex; i < spritePool.length; i++) spritePool[i]!.visible = false;
+    for (let i = regionIndex; i < regionPool.length; i++) regionPool[i]!.visible = false;
+    for (const { node, alpha, grow } of ringedRegions) strokeRegion(node, 3, tokens.ownership, alpha, camera.scale, grow);
     for (let i = markRingIndex; i < markRingPool.length; i++) markRingPool[i]!.visible = false;
     for (let i = haloIndex; i < haloPool.length; i++) haloPool[i]!.visible = false;
     for (let i = glowIndex; i < glowPool.length; i++) glowPool[i]!.visible = false;
@@ -946,9 +1022,7 @@ export async function createRenderer(
         text.text = wanted;
         labelText[labelIndex] = wanted;
       }
-      const centreX = (node.x + node.size / 2 - camera.x) * camera.scale + vp.width / 2;
-      const centreY = (node.y + node.size / 2 - camera.y) * camera.scale + vp.height / 2;
-      const topY = centreY + diameter / 2 + 6;
+      const { x: centreX, y: topY } = labelPosition(node, camera, vp, text.height);
       const halfWidth = text.width / 2 + 3;
       const rect = {
         left: centreX - halfWidth,
@@ -987,7 +1061,7 @@ export async function createRenderer(
     // of `labelLayer`'s own child order so it is never drawn under an already-placed label.
     const hovered = hoveredId ? findNode(hoveredId) : undefined;
     if (hovered) {
-      const diameter = hovered.size * camera.scale;
+      const diameter = Math.min(hovered.width, hovered.height) * camera.scale;
       const text = acquireLabel(labelIndex);
       const wanted =
         diameter >= SUBLABEL_MIN_DIAMETER_PX && hovered.sublabel ? `${hovered.label}\n${hovered.sublabel}` : hovered.label;
@@ -995,9 +1069,8 @@ export async function createRenderer(
         text.text = wanted;
         labelText[labelIndex] = wanted;
       }
-      const centreX = (hovered.x + hovered.size / 2 - camera.x) * camera.scale + vp.width / 2;
-      const centreY = (hovered.y + hovered.size / 2 - camera.y) * camera.scale + vp.height / 2;
-      text.position.set(centreX, centreY + diameter / 2 + 6);
+      const at = labelPosition(hovered, camera, vp, text.height);
+      text.position.set(at.x, at.y);
       text.alpha = 1;
       text.visible = true;
       labelLayer.setChildIndex(text, labelLayer.children.length - 1);
@@ -1006,19 +1079,23 @@ export async function createRenderer(
     for (let i = labelIndex; i < labelPool.length; i++) labelPool[i]!.visible = false;
 
     const selected = selectedId ? findNode(selectedId) : undefined;
-    if (selected && selectionLook.enabled) {
+    if (selected && selectionLook.enabled && selected.shape === "region") {
+      selectionRing.visible = false;
+      strokeRegion(selected, 3, tokens.selection, 1, camera.scale);
+    } else if (selected && selectionLook.enabled) {
       selectionRing.visible = true;
-      selectionRing.position.set(selected.x + selected.size / 2, selected.y + selected.size / 2);
-      selectionRing.scale.set((selected.size * selectionLook.scale) / DISC_TEXTURE_SIZE);
+      fitRing(selectionRing, selected, selectionLook.scale);
       selectionRing.tint = tokens.selection;
     } else {
       selectionRing.visible = false;
     }
 
-    if (hovered && hoverLook.enabled) {
+    if (hovered && hoverLook.enabled && hovered.shape === "region") {
+      hoverRing.visible = false;
+      strokeRegion(hovered, 2, tokens.hover, hoverLook.alpha, camera.scale);
+    } else if (hovered && hoverLook.enabled) {
       hoverRing.visible = true;
-      hoverRing.position.set(hovered.x + hovered.size / 2, hovered.y + hovered.size / 2);
-      hoverRing.scale.set((hovered.size * hoverLook.scale) / DISC_TEXTURE_SIZE);
+      fitRing(hoverRing, hovered, hoverLook.scale);
       hoverRing.tint = tokens.hover;
       hoverRing.alpha = hoverLook.alpha;
     } else {
@@ -1082,20 +1159,42 @@ export async function createRenderer(
     applyBackdrop();
   }
 
+  /** Where a label's top middle goes on screen: inside a region, centred on its `labelAt` or the
+   *  middle of its box; under anything else. */
+  function labelPosition(node: RenderNode, camera: Camera, vp: Viewport, textHeight: number): ScreenPoint {
+    const toScreenX = (x: number) => (x - camera.x) * camera.scale + vp.width / 2;
+    const toScreenY = (y: number) => (y - camera.y) * camera.scale + vp.height / 2;
+    if (node.shape === "region") {
+      const at = node.labelAt ?? { x: 0.5, y: 0.5 };
+      return { x: toScreenX(node.x + at.x * node.width), y: toScreenY(node.y + at.y * node.height) - textHeight / 2 };
+    }
+    return { x: toScreenX(node.x + node.width / 2), y: toScreenY(node.y + node.height) + 6 };
+  }
+
+  /** Places a hover or selection ring round `node`: a circle, or round a square-shaped item whose
+   *  box is not square, a rectangle that follows it. */
+  function fitRing(ring: Sprite, node: RenderNode, scale: number) {
+    const stretched = node.shape === "square" && node.width !== node.height;
+    const side = Math.min(node.width, node.height);
+    ring.texture = stretched ? squareRingTexture : ringTexture;
+    ring.position.set(node.x + node.width / 2, node.y + node.height / 2);
+    ring.scale.set(((stretched ? node.width : side) * scale) / DISC_TEXTURE_SIZE, ((stretched ? node.height : side) * scale) / DISC_TEXTURE_SIZE);
+  }
+
   function hitTest(camera: Camera, point: ScreenPoint, minRadiusPx = 22): RenderNode | null {
     return nearestUnder(nodes, camera, point, minRadiusPx) ?? nearestUnder(around, camera, point, minRadiusPx);
   }
 
   function nearestUnder(candidates: readonly RenderNode[], camera: Camera, point: ScreenPoint, minRadiusPx: number): RenderNode | null {
     const vp = readViewport();
+    const worldX = (point.x - vp.width / 2) / camera.scale + camera.x;
+    const worldY = (point.y - vp.height / 2) / camera.scale + camera.y;
     let best: RenderNode | null = null;
     let bestDistance = Infinity;
     for (const node of candidates) {
-      const screenX = (node.x + node.size / 2 - camera.x) * camera.scale + vp.width / 2;
-      const screenY = (node.y + node.size / 2 - camera.y) * camera.scale + vp.height / 2;
-      const radius = Math.max((node.size * camera.scale) / 2, minRadiusPx);
-      const d = Math.hypot(screenX - point.x, screenY - point.y);
-      if (d <= radius && d < bestDistance) {
+      if (!contains(node, worldX, worldY, minRadiusPx / camera.scale)) continue;
+      const d = distanceToCentre(node, worldX, worldY);
+      if (d < bestDistance) {
         best = node;
         bestDistance = d;
       }

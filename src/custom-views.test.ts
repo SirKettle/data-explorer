@@ -10,6 +10,8 @@ interface FakeView {
 
 const frame = (overrides: Partial<ItemFrame> = {}): ItemFrame => ({
   size: 10,
+  width: 10,
+  height: 10,
   screenSize: 40,
   opacity: 1,
   hovered: false,

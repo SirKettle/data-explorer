@@ -27,10 +27,11 @@
 
 /**
  * How an item is drawn: a soft `cloud` for a group you go into, a hard-edged `disc` or `square` for
- * a single thing. Distinct shapes read even when items are too small to label. A custom renderer
- * (`kind`) replaces the shape where one is loaded.
+ * a single thing. Distinct shapes read even when items are too small to label. A `region` is an
+ * area of its own, for a fixed scene: its `outline` (or, without one, its whole `box`), filled edge
+ * to edge, labelled inside. A custom renderer (`kind`) replaces the shape where one is loaded.
  */
-export type ExplorerShape = "cloud" | "disc" | "square";
+export type ExplorerShape = "cloud" | "disc" | "square" | "region";
 
 /** A colour: a `0xRRGGBB` number, or a CSS string (`#rrggbb`, `#rgb`, `rgb()`, `hsl()`). */
 export type ExplorerColour = number | string;
@@ -52,6 +53,34 @@ export interface ExplorerTexture {
 /** `ring` draws an outline and a soft halo in the item's shape, in the palette's `ownership`
  *  colour: for a state worth seeing at a glance, such as "you own this". */
 export type ExplorerEmphasis = "ring";
+
+/** A rectangle in a fixed scene's own units: left, top, width and height. */
+export interface ExplorerRect {
+  /** Left edge. */
+  x: number;
+  /** Top edge. */
+  y: number;
+  /** Width. */
+  width: number;
+  /** Height. */
+  height: number;
+}
+
+/**
+ * A `region`'s outline, in the same units as its `box`: a list of polygons, each a list of rings,
+ * each a list of `[x, y]` points. A polygon's first ring is its edge and any others are holes in it,
+ * the shape of a GeoJSON MultiPolygon's coordinates once projected. Keep it inside the box: the box
+ * is what is culled and fitted, and a point outside it never counts as on the region.
+ */
+export type ExplorerOutline = number[][][][];
+
+/** A point in a fixed scene's own units. */
+export interface ExplorerPoint {
+  /** Across. */
+  x: number;
+  /** Down. */
+  y: number;
+}
 
 /** How much of a group an aggregate stands for: `shown` of `total` (as from `windowed()`). */
 export interface ExplorerTruncation {
@@ -103,6 +132,16 @@ export interface ExplorerNode<F = unknown, D = unknown> {
   /** Selects a custom renderer from the view's `renderers` module (for example `"planet"`). With
    *  no renderer for this kind, the item is drawn as its `shape`. */
   kind?: string | null;
+  /** Where the item is, in a scene with `layout: "fixed"`: its rectangle in the scene's units. A
+   *  `square` fills it; a `disc` or `cloud` is the largest circle that fits. Without one, the item
+   *  is not drawn in a fixed scene. Other layouts ignore it. */
+  box?: ExplorerRect | null;
+  /** A `region`'s shape inside its `box` (see `ExplorerOutline`): drawn, and hit-tested, instead of
+   *  the whole box. Ignored by other shapes. */
+  outline?: ExplorerOutline | null;
+  /** Where a `region`'s label goes, in the same units as its `box`: a point well inside it, for a
+   *  shape whose box's middle falls outside it. Defaults to the middle of the box. */
+  labelAt?: ExplorerPoint | null;
   /** Your own data for this item, handed back with it by the selection events (`onNodeSelect`,
    *  `onNodeHover`, `onNodeActivate`). The explorer never reads it. */
   data?: D;
@@ -150,6 +189,12 @@ export interface ExplorerCluster<F = unknown, D = unknown> {
   texture?: ExplorerTexture | null;
   /** As `ExplorerNode.kind`. */
   kind?: string | null;
+  /** As `ExplorerNode.box`. */
+  box?: ExplorerRect | null;
+  /** As `ExplorerNode.outline`. */
+  outline?: ExplorerOutline | null;
+  /** As `ExplorerNode.labelAt`. */
+  labelAt?: ExplorerPoint | null;
   /** As `ExplorerNode.data`. */
   data?: D;
 }
@@ -193,6 +238,8 @@ export type ExplorerItem<F = unknown, D = unknown> = ExplorerNode<F, D> | Explor
  * **Packed** (the default): clusters and nodes packed together, biggest first; how a level of a
  * tree is shown. **Radial**: set `focusId` to an item's id to draw it in the middle with its
  * neighbours round it; how one item's neighbourhood in a graph is shown (see `ExplorerEdge`).
+ * **Fixed**: set `layout: "fixed"` and give every item a `box`; items are drawn where you put them,
+ * at the size you gave, for data with places of its own, such as a map.
  */
 export interface ExplorerScene<F = unknown, D = unknown> {
   /** Identifies the scene (for example, the focus as a string). */
@@ -205,6 +252,15 @@ export interface ExplorerScene<F = unknown, D = unknown> {
   nodes: ExplorerNode<F, D>[];
   /** Relationships between items of this scene (see `ExplorerEdge`). */
   edges: ExplorerEdge[];
+  /** `"fixed"` draws every item at its own `box`, ignoring `weight`; `"packed"` (the default) lays
+   *  them out for you. A fixed scene with a `focusId` keeps its boxes; the focus is still never
+   *  entered. */
+  layout?: "packed" | "fixed";
+  /** A fixed scene's extent, in the same units as its items' boxes; defaults to the smallest
+   *  rectangle round them. When a fixed scene is entered from an item of a fixed scene, its
+   *  `bounds` is fitted exactly onto that item's box: give a child scene its parent item's box as
+   *  `bounds`, in the same units, and the children land exactly where the parent was drawn. */
+  bounds?: ExplorerRect | null;
   /** Makes the scene radial, centred on the item with this id. The centre is drawn at a fixed size
    *  and is never entered; its neighbours are sized against each other. */
   focusId?: string | null;

@@ -90,19 +90,21 @@ export function fitCamera(viewport: Viewport, width: number, height: number, pad
 export interface Box {
   x: number;
   y: number;
-  size: number;
+  width: number;
+  height: number;
 }
 
 export function boxCentre(box: Box): ScreenPoint {
-  return { x: box.x + box.size / 2, y: box.y + box.size / 2 };
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-/** The camera at which `box` fills `fillFraction` of the viewport's smaller dimension, centred. */
+/** The camera at which `box` fills `fillFraction` of the viewport, centred: for a square box, of the
+ *  viewport's smaller dimension; for any box, as much as fits on both axes. */
 export function cameraFillingBox(viewport: Viewport, box: Box, fillFraction: number): Camera {
   const centre = boxCentre(box);
   return {
     ...centre,
-    scale: clampScale((Math.min(viewport.width, viewport.height) / (box.size * 1.05)) * fillFraction),
+    scale: clampScale(Math.min(viewport.width / (box.width * 1.05), viewport.height / (box.height * 1.05)) * fillFraction),
   };
 }
 

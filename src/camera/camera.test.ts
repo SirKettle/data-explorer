@@ -81,15 +81,23 @@ describe("cameraPlacing / cameraFillingBox", () => {
   });
 
   test("cameraFillingBox centres the box and scales it to fillFraction of the viewport's smaller dimension", () => {
-    const box = { x: 100, y: 100, size: 50 };
+    const box = { x: 100, y: 100, width: 50, height: 50 };
     const camera = cameraFillingBox(viewport, box, 0.9);
     const centre = boxCentre(box);
     expect(camera.x).toBe(centre.x);
     expect(camera.y).toBe(centre.y);
     // The box, rendered under this camera, spans roughly fillFraction of the smaller viewport side.
-    const spanPx = box.size * camera.scale;
+    const spanPx = box.width * camera.scale;
     expect(spanPx).toBeLessThanOrEqual(Math.min(viewport.width, viewport.height));
     expect(spanPx / Math.min(viewport.width, viewport.height)).toBeCloseTo(0.9 / 1.05, 2);
+  });
+
+  test("cameraFillingBox fits a rectangular box by whichever axis is tighter", () => {
+    const tall = { x: 0, y: 0, width: 10, height: 400 };
+    const camera = cameraFillingBox(viewport, tall, 0.9);
+    expect(camera.y).toBe(200);
+    expect(tall.height * camera.scale).toBeCloseTo((viewport.height * 0.9) / 1.05, 2);
+    expect(tall.width * camera.scale).toBeLessThan(viewport.width);
   });
 });
 

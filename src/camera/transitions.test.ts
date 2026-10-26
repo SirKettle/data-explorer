@@ -130,6 +130,13 @@ describe("the cloud cross-fade (transitionView)", () => {
     for (const node of early.under[0]!.nodes) {
       expect(node.x).toBeGreaterThanOrEqual(box.x);
       expect(node.x + node.size).toBeLessThanOrEqual(box.x + box.width);
+      // Placed into the anchor, a node's box stays square and its deprecated `size` in step.
+      expect(node.width).toBeCloseTo(node.height, 9);
+      expect(node.size).toBe(Math.max(node.width, node.height));
+    }
+    for (const node of stack.current.renderNodes) {
+      const laid = stack.current.layout.boxes.find((b) => b.id === node.id)!;
+      expect([node.width, node.height, node.size]).toEqual([laid.width, laid.height, laid.width]);
     }
     const anchor = stack.current.renderNodes.find((n) => n.id === "groupA")!;
     const earlyChild = early.under[0]!.alpha(early.under[0]!.nodes[0]!);
@@ -470,5 +477,92 @@ describe("siblings live on around the current scene, and you can move across int
     await flush();
     expect(source.calls.length).toBe(callsBefore);
     expect(stack.transitionView(Infinity).under.some((layer) => layer.nodes[0]!.id === "itemB")).toBe(true);
+  });
+});
+
+describe("fixed scenes", () => {
+  /** A world of two side-by-side regions, the first holding two places, in one set of units. */
+  function world(): Record<string, Scene> {
+    const region = (id: string, x: number) => ({
+      id,
+      label: id,
+      weight: 1,
+      href: `/regions/${id}`,
+      drillsInto: id,
+      shape: "square" as const,
+      box: { x, y: 0, width: 400, height: 200 },
+    });
+    const place = (id: string, x: number, y: number) => ({
+      id,
+      label: id,
+      weight: 1,
+      href: `/places/${id}`,
+      drillsInto: null,
+      shape: "square" as const,
+      box: { x, y, width: 100, height: 50 },
+    });
+    return {
+      root: { id: "world", heading: "World", layout: "fixed", clusters: [region("east", 0), region("west", 400)], nodes: [], edges: [] },
+      east: { id: "east", heading: "East", layout: "fixed", bounds: { x: 0, y: 0, width: 400, height: 200 }, clusters: [], nodes: [place("p", 0, 0), place("q", 300, 150)], edges: [] },
+    };
+  }
+
+  test("a fixed child whose bounds is its parent item's box is previewed exactly where it will be", async () => {
+    const scenes = world();
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    // The world's units, scaled so its longer side is 1,000: `s` world units to one of the data's.
+    const s = stack.current.layout.width / 800;
+    expect(stack.current.layout.height).toBeCloseTo(200 * s);
+    const east = stack.current.layout.boxes.find((b) => b.id === "east")!;
+    expect(east).toMatchObject({ x: 0, y: 0, width: 400 * s, height: 200 * s });
+
+    rig.set({ x: 200 * s, y: 100 * s, scale: 1.2 });
+    stack.schedulePreviews();
+    await flush();
+    const preview = stack.transitionView(Infinity).under[0]!.nodes;
+    // No margin: the places sit at their own coordinates, in the world's units.
+    expect(preview.find((n) => n.id === "p")).toMatchObject({ x: expect.closeTo(0), y: expect.closeTo(0), width: expect.closeTo(100 * s), height: expect.closeTo(50 * s) });
+    expect(preview.find((n) => n.id === "q")).toMatchObject({ x: expect.closeTo(300 * s), y: expect.closeTo(150 * s) });
+  });
+
+  test("a region's outline and label point travel relative to its box, so a preview keeps them", async () => {
+    const scenes = world();
+    const east = scenes.east!;
+    scenes.east = {
+      ...east,
+      nodes: [{ ...east.nodes[0]!, shape: "region", outline: [[[[0, 0], [100, 0], [0, 50]]]], labelAt: { x: 25, y: 10 } }, east.nodes[1]!],
+    };
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    rig.set({ x: 250, y: 125, scale: 1.2 });
+    stack.schedulePreviews();
+    await flush();
+    const p = stack.transitionView(Infinity).under[0]!.nodes.find((n) => n.id === "p")!;
+    expect(p.outline).toEqual([[[[0, 0], [1, 0], [0, 1]]]]);
+    expect(p.labelAt).toEqual({ x: 0.25, y: 0.2 });
+    // A square ignores both.
+    expect(stack.transitionView(Infinity).under[0]!.nodes.find((n) => n.id === "q")).toMatchObject({ outline: null, labelAt: null });
+  });
+
+  test("entering and leaving keep a place where it was on screen", async () => {
+    const scenes = world();
+    const { rig, stack } = stackOver(fakeSource(scenes), scenes.root!, viewport);
+    const s = stack.current.layout.width / 800;
+    rig.set({ x: 200 * s, y: 100 * s, scale: 1.2 });
+    const before = rig.worldToScreen(300 * s, 150 * s); // q's corner
+    await stack.enter("east", { approach: false });
+    expect(stack.current.key).toBe("east");
+    const q = stack.current.renderNodes.find((n) => n.id === "q")!;
+    const after = rig.worldToScreen(q.x, q.y);
+    expect(after.x).toBeCloseTo(before.x, 6);
+    expect(after.y).toBeCloseTo(before.y, 6);
+    expect(q.width * rig.camera.scale).toBeCloseTo(100 * s * 1.2, 6);
+
+    // The sibling, drawn round the region you are in, is where it was too.
+    const west = stack.transitionView(Infinity).over!.nodes.find((n) => n.id === "west")!;
+    expect(rig.worldToScreen(west.x, west.y).x).toBeCloseTo(before.x + 100 * s * 1.2, 6);
+
+    await stack.leave(false);
+    expect(stack.current.key).toBe("root");
+    expect(rig.worldToScreen(300 * s, 150 * s).x).toBeCloseTo(before.x, 6);
   });
 });

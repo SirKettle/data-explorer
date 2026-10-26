@@ -7,8 +7,13 @@
 /** What one item renderer is given each drawn frame. All numbers, never a PixiJS object, except
  *  `texture`, which is whatever the renderer itself works with (a PixiJS `Texture` in practice). */
 export interface ItemFrame<Tex = unknown> {
-  /** The item's diameter in world units: draw centred on (0, 0) at this size. */
+  /** The item's diameter in world units: draw centred on (0, 0) at this size. In a box that is not
+   *  square, the largest circle or square that fits it. */
   size: number;
+  /** The width of the item's box in world units, centred on (0, 0). Equal to `size` when square. */
+  width: number;
+  /** The height of the item's box in world units, centred on (0, 0). Equal to `size` when square. */
+  height: number;
   /** The same, in screen pixels: for choosing level of detail. */
   screenSize: number;
   /** 0 to 1, already applied to the view by the package; for a renderer that fades parts. */

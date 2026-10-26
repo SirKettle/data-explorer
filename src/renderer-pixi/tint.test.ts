@@ -13,8 +13,12 @@ function renderNode(overrides: Partial<RenderNode>): RenderNode {
     id: "a",
     x: 0,
     y: 0,
+    width: 10,
+    height: 10,
     size: 10,
     shape: "disc",
+    outline: null,
+    labelAt: null,
     drillable: false,
     focus: null,
     label: "A",
@@ -45,6 +49,13 @@ describe("appearanceFor colour precedence (US071 AC3)", () => {
     expect(appearanceFor(renderNode({ shape: "cloud", color: 0xff0000 }))).toEqual({ shape: "nebula", tint: 0xff0000, ring: null, glow: "none" });
     expect(appearanceFor(renderNode({ aggregate: true, color: 0xff0000 }))).toEqual({ shape: "aggregate", tint: null, ring: null, glow: "none" });
   });
+});
+
+test("a ring follows a square or a region; anything else, and an aggregate, gets a disc ring", () => {
+  expect(appearanceFor(renderNode({ shape: "region", emphasis: ["ring"] }))).toMatchObject({ shape: "region", ring: "region" });
+  expect(appearanceFor(renderNode({ shape: "square", emphasis: ["ring"] }))).toMatchObject({ ring: "square" });
+  expect(appearanceFor(renderNode({ shape: "cloud", emphasis: ["ring"] }))).toMatchObject({ ring: "disc" });
+  expect(appearanceFor(renderNode({ shape: "region", aggregate: true, emphasis: ["ring"] }))).toMatchObject({ shape: "aggregate", ring: "disc" });
 });
 
 describe("render nodes carry an item's colour, parsed once (US071 AC3)", () => {
