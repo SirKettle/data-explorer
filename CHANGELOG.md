@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.5.0...data-explorer-v0.6.0) (2026-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* fixed layouts and regions, for data with places of its own
+* `ExplorerShape`, `NodeShape` and `NodeAppearance.ring` gain `"region"`; code that switches exhaustively over any of them must handle it.
+
+### Features
+
+* fixed layouts and regions, for data with places of its own ([cd6f55d](https://github.com/SirKettle/data-explorer/commit/cd6f55dccb0811917e40897f8b982313d2f7f9ef))
+* pan and zoom limits that keep the scene in view, on by default (the `limits` prop; `false` turns each off) ([cd6f55d](https://github.com/SirKettle/data-explorer/commit/cd6f55dccb0811917e40897f8b982313d2f7f9ef))
+
 ## [0.5.0](https://github.com/SirKettle/data-explorer/compare/data-explorer-v0.4.0...data-explorer-v0.5.0) (2026-10-24)
 
 
