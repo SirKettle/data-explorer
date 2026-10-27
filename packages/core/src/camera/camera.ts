@@ -179,6 +179,12 @@ export class CameraRig {
 
   /** Zooms by `factor` about a screen point, keeping that point still. */
   zoomAtScreen(screen: ScreenPoint, factor: number): void {
+    // Solve for the scale the limit allows, not the one asked for: solving at a scale the limit
+    // then clamps back leaves the camera moved, so zooming on at the limit drifts the view.
+    if (this.limit) {
+      const scale = this.limit({ ...this.camera, scale: clampScale(this.camera.scale * factor) }).scale;
+      factor = scale / this.camera.scale;
+    }
     this.set(zoomAtScreenPoint(this.camera, this.viewport, screen, factor));
   }
 

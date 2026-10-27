@@ -200,4 +200,11 @@ describe("limitCamera", () => {
     r.panByScreen(-100_000, 0);
     expect(worldToScreen(r.camera, viewport, 1000, 0).x).toBeCloseTo(200, 6);
   });
+
+  test("zooming on past the scale limit leaves the camera where it is", () => {
+    const r = new CameraRig(() => viewport, { x: 500, y: 250, scale: 0.2 });
+    r.limit = (camera) => limitCamera(camera, viewport, limits);
+    for (let i = 0; i < 20; i++) r.zoomAtScreen({ x: 100, y: 100 }, 0.8);
+    expect(r.camera).toEqual({ x: 500, y: 250, scale: 0.2 });
+  });
 });
