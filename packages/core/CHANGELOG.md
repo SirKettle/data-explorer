@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/SirKettle/data-xplorer/compare/core-v0.7.0...core-v0.7.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* zooming past limit fixed ([9666e6d](https://github.com/SirKettle/data-xplorer/commit/9666e6d1a29654a84ceb47bd99f17ea561826006))
+
 ## [0.7.0](https://github.com/SirKettle/data-xplorer/compare/core-v0.6.0...core-v0.7.0) (2026-10-26)
 
 
