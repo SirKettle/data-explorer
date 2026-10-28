@@ -9,6 +9,7 @@ import moduleGraph from "./module-graph/index.html";
 import stress from "./stress/index.html";
 import solarSystem from "./solar-system/index.html";
 import orgChart from "./org-chart/index.html";
+import lego from "./lego/index.html";
 
 const server = Bun.serve({
   port: Number(process.env.PORT ?? 3070),
@@ -26,6 +27,8 @@ const server = Bun.serve({
     "/solar-system/": solarSystem,
     "/org-chart": orgChart,
     "/org-chart/": orgChart,
+    "/lego": lego,
+    "/lego/": lego,
   },
   development: true,
 });

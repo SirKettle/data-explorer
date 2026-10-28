@@ -1,0 +1,21 @@
+---
+title: A LEGO baseplate
+description: The LEGO catalogue as one baseplate, themes as tiles and sets as bricks, running, with its source.
+sidebar:
+  order: 7
+---
+
+import ExampleFrame from "../../../components/ExampleFrame.astro";
+import f_source_ts from "../../../../../packages/core/examples/lego/source.ts?raw";
+import f_baseplate_ts from "../../../../../packages/core/examples/lego/baseplate.ts?raw";
+import f_renderers_ts from "../../../../../packages/core/examples/lego/lego-renderers.ts?raw";
+import f_main_tsx from "../../../../../packages/core/examples/lego/main.tsx?raw";
+
+Fixed scenes nested by stud: the LEGO catalogue (a snapshot of picabase's, 17,592 building sets) packed onto one baseplate. Each theme is a plate, as big as its bricks need; zoom in and the plate fades as its sub-themes' plates and its sets come in, each set a brick sized by its part count, laid like masonry with the small ones filling the gaps the big ones leave. Every scene's `bounds` is its theme's plate in the same studs, so the baseplate's grid `step` is reset per scene (`onEnter`) and its studs stay in register with the bricks'. Custom `plate` and `brick` renderers draw each footprint once into a shared `GraphicsContext`, and a plate's studs are one rectangle filled with a repeating stud texture.
+
+The frame below runs the example built from exactly these files. Start with `source.ts`, then
+`baseplate.ts` for the stud layout. Every example shares one small page shell
+(`packages/core/examples/shared/ExampleShell.tsx`): it keeps the focus in the URL hash, builds a
+breadcrumb from `onSceneChange`, and shows the selected item from `onNodeSelect`.
+
+<ExampleFrame name="lego" files={{ "source.ts": f_source_ts, "baseplate.ts": f_baseplate_ts, "lego-renderers.ts": f_renderers_ts, "main.tsx": f_main_tsx }} />
