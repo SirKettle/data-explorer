@@ -154,8 +154,11 @@ describe("the cloud cross-fade (transitionView)", () => {
     stack.schedulePreviews();
     await flush();
     const now = stack.transitionView(performance.now());
+    const settled = stack.transitionView(Infinity).under[0]!;
     expect(now.animating).toBe(true);
-    expect(now.under[0]?.alpha(now.under[0].nodes[0]!) ?? 0).toBeLessThan(stack.transitionView(Infinity).under[0]!.alpha(now.under[0]!.nodes[0]!));
+    // Read within a millisecond or so of arriving, the preview is too faint to be drawn at all yet
+    // (no layer): that is fading in too. The settled layer is the comparison, never `now`'s.
+    expect(now.under[0]?.alpha(now.under[0].nodes[0]!) ?? 0).toBeLessThan(settled.alpha(settled.nodes[0]!));
   });
 
   test("entering a previewed child swaps synchronously with every node exactly where, and as opaque as, it was drawn", async () => {
