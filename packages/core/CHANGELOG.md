@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.2](https://github.com/SirKettle/data-xplorer/compare/core-v0.7.1...core-v0.7.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* draw a hovered item's label once ([b67662e](https://github.com/SirKettle/data-xplorer/commit/b67662ecc169a6e81f548b7bbf58ff8624048a0f))
+* draw a hovered item's label once ([0752a94](https://github.com/SirKettle/data-xplorer/commit/0752a94438faa937821b4a8da5404e4ec773da33))
+
 ## [0.7.1](https://github.com/SirKettle/data-xplorer/compare/core-v0.7.0...core-v0.7.1) (2026-10-27)
 
 
