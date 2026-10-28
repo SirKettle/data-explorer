@@ -1032,6 +1032,8 @@ export async function createRenderer(
 
     let labelIndex = 0;
     const placed: { left: number; right: number; top: number; bottom: number }[] = [];
+    /** The label already placed for each node, so a hover reuses it rather than drawing a second. */
+    const placedFor = new Map<string, Text>();
     for (const { node, diameter, alpha } of labelCandidates) {
       const text = acquireLabel(labelIndex);
       const wanted =
@@ -1072,6 +1074,7 @@ export async function createRenderer(
       text.alpha = alpha;
       text.visible = true;
       placed.push(rect);
+      placedFor.set(node.id, text);
       labelIndex++;
     }
 
@@ -1079,9 +1082,15 @@ export async function createRenderer(
     // collision pass above (the whole point — the nodes too small to have earned a label are
     // exactly the ones a hover needs to name), reuses the next pool slot, and is moved to the top
     // of `labelLayer`'s own child order so it is never drawn under an already-placed label.
+    // A hovered node whose label was placed already keeps that one, brought to the top: drawing a
+    // second showed it twice, and offset, when the two disagreed about the sublabel.
     const hovered = hoveredId ? findNode(hoveredId) : undefined;
-    if (hovered) {
-      const diameter = Math.min(hovered.width, hovered.height) * camera.scale;
+    const hoveredLabel = hovered ? placedFor.get(hovered.id) : undefined;
+    if (hoveredLabel) {
+      hoveredLabel.alpha = 1;
+      labelLayer.setChildIndex(hoveredLabel, labelLayer.children.length - 1);
+    } else if (hovered) {
+      const diameter = (hovered.shape === "region" ? Math.max(hovered.width, hovered.height) : Math.min(hovered.width, hovered.height)) * camera.scale;
       const text = acquireLabel(labelIndex);
       const wanted =
         diameter >= SUBLABEL_MIN_DIAMETER_PX && hovered.sublabel ? `${hovered.label}\n${hovered.sublabel}` : hovered.label;
