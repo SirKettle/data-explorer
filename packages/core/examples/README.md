@@ -1,6 +1,6 @@
 # Examples
 
-Five small apps built on `@data-xplorer/core`, plus a stress page for measuring, each with
+Six small apps built on `@data-xplorer/core`, plus a stress page for measuring, each with
 made-up data and nothing else underneath. Each shows a different part of the contract. (Real
 country shapes in fixed scenes are an app of their own, [`apps/world`](../../../apps/world/).) The
 [documentation site](https://sirkettle.github.io/data-xplorer/examples/) runs each one beside its
@@ -20,6 +20,7 @@ step. If a page still shows old code after an edit, restart the server.
 | [A streaming atlas](./atlas/)                | `/atlas`        | The optional members: `loadSceneStreaming` with `expectedItemCount` (countries arrive in pages), `subscribeToInvalidation` + `refreshScene` (mark a country visited and its ring appears in place), a custom `ramp` (population density), and a live `palette` switch between light and dark. |
 | [A solar system](./solar-system/)            | `/solar-system` | Item `texture`s cropped to their disc, a `texture` from a host with no CORS header (`github.com/<user>.png`: the fallback and `onTextureError`), custom renderers by item `kind`, `edges` as orbits, a `pulse`, and an image `background`. |
 | [An org chart](./org-chart/)                 | `/org-chart`    | A tree (departments, teams, people) into a radial person view whose manager and reports are drawn edges you can walk. Written from the docs alone, as US072's cold-start test, with a headless `smoke.test.ts`. |
+| [A LEGO baseplate](./lego/)                  | `/lego`         | Fixed scenes nested by stud: the LEGO catalogue (a snapshot of picabase's, 17,592 sets) packed onto one baseplate, themes as plates that fade as their contents come in, and sets as bricks sized by part count, laid like masonry with the small ones filling the gaps. Each scene's `bounds` is its theme's plate in the same studs, so the grid's `step` is set per scene (`onEnter`) and the baseplate's studs stay in register with the bricks'. Custom `plate` and `brick` renderers share one `GraphicsContext` per footprint; a plate's studs are one rectangle filled with a repeating stud texture. |
 | [Stress test](./stress/)                     | `/stress`       | One big scene, its size and styles in the query string, for reading draw cost off `?stats=1`. |
 
 ## Layout
