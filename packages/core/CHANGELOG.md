@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.3](https://github.com/SirKettle/data-xplorer/compare/core-v0.7.2...core-v0.7.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* never evict a preview whose node is on screen ([#27](https://github.com/SirKettle/data-xplorer/issues/27)) ([efbf47a](https://github.com/SirKettle/data-xplorer/commit/efbf47afa131ded574068f29853d0ae6e2af3bd4))
+
 ## [0.7.2](https://github.com/SirKettle/data-xplorer/compare/core-v0.7.1...core-v0.7.2) (2026-10-28)
 
 
