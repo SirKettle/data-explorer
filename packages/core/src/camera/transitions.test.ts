@@ -279,6 +279,38 @@ describe("every visible node previews its own children (not just the one nearest
     expect(stack.transitionView(Infinity).currentAlpha!(b)).toBe(1);
   });
 
+  test("more nodes previewing on screen than the cache's usual limit: none is evicted while it is on screen", async () => {
+    // A fixed layout of like-sized regions (a baseplate of plates) can put more than a dozen nodes
+    // past the prefetch size on screen at once. Each preview remembered used to evict the oldest,
+    // still on screen, which was laid out again on the next frame, evicting another: the children
+    // came and went as you panned, and the loader was asked for them every frame.
+    const ids = Array.from({ length: 20 }, (_, i) => `g${i}`);
+    // Five across, four down, a unit apart: like-sized regions, as a baseplate's plates are.
+    const plates = overview(Object.fromEntries(ids.map((id) => [id, 500])));
+    const root: Scene = {
+      ...plates,
+      layout: "fixed",
+      bounds: { x: 0, y: 0, width: 50, height: 40 },
+      clusters: plates.clusters.map((cluster, i) => ({ ...cluster, shape: "region" as const, box: { x: (i % 5) * 10 + 1, y: Math.floor(i / 5) * 10 + 1, width: 8, height: 8 } })),
+    };
+    const source = fakeSource({ root, ...Object.fromEntries(ids.map((id) => [id, groupScene(id, [`item-${id}`])])) });
+    for (const id of ids) await source.loadScene(id); // cached: previews cost no request, so none waits for a slot
+    const { rig, stack } = stackOver(source, root);
+    frameBetween(rig, stack.current.layout.boxes, ids, 0.17);
+
+    const before = source.calls.length;
+    stack.schedulePreviews();
+    await flush();
+    const previewed = source.calls.length - before;
+    expect(previewed).toBeGreaterThan(12);
+
+    for (let frame = 0; frame < 5; frame++) {
+      stack.schedulePreviews();
+      await flush();
+    }
+    expect(source.calls.length - before).toBe(previewed); // nothing evicted, so nothing loaded again
+  });
+
   test("uncached loads are bounded and biggest-on-screen first; a freed slot takes the next", async () => {
     // The lowest weight always maps to the minimum size; `tiny` takes that, and stays too small to load.
     const root = overview({ big: 1000, mid: 900, small: 800, tiny: 1 });

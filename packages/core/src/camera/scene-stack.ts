@@ -228,8 +228,10 @@ const LATERAL_MIN_FILL = AUTO_ENTER_SIZE_FRACTION * AUTO_LEAVE_SCALE_FRACTION;
 /** D1.2 — the prefetch threshold. Was 40%; lowered so the children have usually arrived before
  *  they start fading in behind the anchor's cloud (`transition.ts`). Still a guess, not measured. */
 const PREFETCH_SIZE_FRACTION = PREVIEW_PREFETCH_FILL;
-/** At most this many child scenes held for preview within one scene — comfortably more than the
- *  nodes ever big enough on screen at once to be previewing. */
+/** At most this many child scenes held for preview within one scene, beyond the ones on screen:
+ *  a preview whose node is on screen is never evicted, however many there are. A packed scene
+ *  rarely has a dozen nodes big enough at once; a fixed layout of like-sized regions can have
+ *  dozens, and evicting those on screen made their children come and go every frame. */
 const PREVIEW_CACHE_LIMIT = 12;
 /** At most this many previews waiting on their first page at once; the biggest on screen go first.
  *  (Later pages of a streamed scene stream on in the background and don't hold a slot.) */
@@ -401,10 +403,13 @@ interface PreviewHolder<F> {
   previews: Map<string, PreviewEntry<F>>;
   pending: Map<string, Promise<StackedScene<F>>>;
   alive: boolean;
+  /** The keys of its nodes big enough on screen to preview, as of the last `schedulePreviews`:
+   *  never evicted. Bounded by how many such nodes fit on screen at once. */
+  onScreen: Set<string>;
 }
 
 function newHolder<F>(): PreviewHolder<F> {
-  return { previews: new Map(), pending: new Map(), alive: true };
+  return { previews: new Map(), pending: new Map(), alive: true, onScreen: new Set() };
 }
 
 /**
@@ -541,7 +546,11 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
     const entry = { scene, arrivedAt };
     holder.previews.delete(scene.key);
     holder.previews.set(scene.key, entry);
-    while (holder.previews.size > PREVIEW_CACHE_LIMIT) holder.previews.delete(holder.previews.keys().next().value!);
+    // Oldest first, skipping any still on screen (and the one just remembered).
+    for (const key of holder.previews.keys()) {
+      if (holder.previews.size <= PREVIEW_CACHE_LIMIT) break;
+      if (key !== scene.key && !holder.onScreen.has(key)) holder.previews.delete(key);
+    }
     return entry;
   }
 
@@ -981,8 +990,8 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
    * D1.2/D1.3, widened — starts loading the children of every visible drillable node past the
    * prefetch threshold, biggest on screen first, at most `MAX_PREVIEW_LOADS` uncached at once.
    * Cheap to call every frame (the caller does, after each draw): a no-op for anything already
-   * previewing or pending. Previews still on screen are refreshed in the cache's LRU order so a
-   * long pan doesn't evict the ones being looked at.
+   * previewing or pending. Previews still on screen are refreshed in the cache's LRU order, and
+   * marked so the cache's limit never evicts one (`PreviewHolder.onScreen`).
    */
   function schedulePreviews() {
     if (animating || transitioning) return;
@@ -1002,6 +1011,9 @@ export function createSceneStack<F>({ rig, source, initialFocus, initialScene, a
       }
     }
     candidates.sort((a, b) => b.fill - a.fill);
+    here.onScreen.clear();
+    frame?.holder.onScreen.clear();
+    for (const { node, holder } of candidates) holder.onScreen.add(keyOf(focusOf(node) as F));
 
     for (const { node, holder } of candidates) {
       const focus = focusOf(node) as F;
